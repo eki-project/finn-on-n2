@@ -1,0 +1,36 @@
+[general]
+used_environment = "cluster"
+finn_singularity_gha = "oras://ghcr.io/eki-project/experiment-manager/finn_apptainer_xilinx:dev"
+dev_mode = true
+
+
+[finn]
+build_template = "build_template.py"
+repositories.default = "git@github.com:Xilinx/finn.git"
+repositories.eki = "git@github.com:eki-project/finn-internal.git"
+default_repository = "eki"
+default_branch = "feature/c_driver"
+
+
+[finn_driver]
+default_repository = "git@github.com:eki-project/finn-cpp-driver.git"
+default_branch = "dev"
+default_compile_mode = "Release"
+
+
+[environment.cluster]
+type = "cluster"
+driver_compiler_prefix_commands = "ml fpga;ml xilinx/xrt/2.14;ml devel/Doxygen/1.9.5-GCCcore-12.2.0;ml compiler/GCC/12.2.0;ml devel/CMake/3.24.3-GCCcore-12.2.0;"
+job_execution = "sbatch "
+finn_build_script = "finn_build_single_job.sh"
+cppdriver_run_script = "run_cpp_driver.sh"
+pythondriver_run_script = "run_python_driver.sh"
+
+
+[environment.normal]
+type = "normal"
+driver_compiler_prefix_commands = ""
+job_execution = "./"
+finn_build_script = ""
+cppdriver_run_script = ""
+pythondriver_run_script = ""
