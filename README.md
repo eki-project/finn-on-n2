@@ -7,6 +7,8 @@ __IMPORANT__: _Please make sure that you know the contents of the configuration 
 
 For a complete usage manual refer to the N2 documentation.
 
+If something does not work as expected, please open an issue, or write directly to `bjarne.wintermann@uni-paderborn.de`
+
 # Default File Structure
 This is the default file structure after a finn and driver were installed and an example ONNX file was compiled and executed on FPGA:
 ```
@@ -32,3 +34,6 @@ myproject
                    |--- config.json
                    |--- FinnDatatypesHeader.h
 ```
+
+## To do
+- [ ] Collect common functions in one module

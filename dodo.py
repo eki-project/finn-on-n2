@@ -6,6 +6,7 @@ import sys
 import os
 import json
 import platform
+import shutil
 import copy
 import toml
 from doit.action import CmdAction
@@ -84,8 +85,7 @@ def task_getfinn():
         if os.path.isdir("finn"):
             return
 
-        cmd = "git clone " + finn_repos[source]
-        subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+        subprocess.run(["git", "clone", finn_repos[source]], stdout=subprocess.PIPE)
         
 
     def renameIfEki():
@@ -93,7 +93,11 @@ def task_getfinn():
             os.rename("finn-internal", "finn")
 
     def initSubmodules():
-        subprocess.run("git submodule init;git submodule update", shell=True, stdout=subprocess.PIPE, cwd="finn")
+        subprocess.run(["git", "submodule", "init"], cwd="finn", stdout=subprocess.PIPE)
+        subprocess.run(["git", "submodule", "update"], cwd="finn", stdout=subprocess.PIPE)
+
+    def checkoutBranch(branch):
+        subprocess.run(["git", "checkout", branch], cwd="finn")
 
     return {
         "doc": "Clone the specified repository and switch to a given branch. Should only be executed once",
@@ -116,7 +120,7 @@ def task_getfinn():
         "actions": [
             (clone,),
             (renameIfEki,),
-            CmdAction("git checkout {branch}", cwd="./finn"),
+            (checkoutBranch,),
             (initSubmodules,)
         ],
     }
@@ -155,20 +159,18 @@ def create_project_dir_if_needed(name):
 def copy_onnx_file(name):
     pdir, pname = get_project_dir_name(name)
     if not os.path.isfile(os.path.join(pdir, pname + ".onnx")):
-        subprocess.run(f"cp {name[0]} {pdir}", shell=True)
+        subprocess.run(["cp", name[0], pdir])
 
 
 def inst_build_template(name):
     pdir, pname = get_project_dir_name(name)
     basename = pname + ".onnx"
     if not os.path.isfile(os.path.join(pdir, "build.py")):
-        subprocess.run(f"cp {finn_build_template} {pdir}", shell=True)
-        subprocess.run(f"mv {finn_build_template} build.py", cwd=pdir, shell=True)
-        subprocess.run(
-            f'sed -i -e "s/<ONNX_INPUT_NAME>/{basename}/g" build.py',
-            cwd=pdir,
-            shell=True,
-        )  # ? Ugly string manipulation, improve at some point
+        subprocess.run(["cp", finn_build_template, pdir])
+        subprocess.run(["mv", finn_build_template, "build.py"], cwd=pdir)
+        
+        # ? Ugly string manipulation, improve at some point
+        subprocess.run(["sed", "-i", "-e", f"\"s/<ONNX_INPUT_NAME>/{basename}/g\"", "build.py"], cwd=pdir)
         print("build.py templated! Please edit the build.py to your liking.")
 
 
@@ -193,7 +195,7 @@ def task_finn():
         pname = os.path.basename(name[0]).replace(".onnx", "")
         basename = pname + ".onnx"
         pdir = os.path.join(".", pname)
-        subprocess.run(f"{job_exec_prefix}{finn_build_script} {os.path.abspath(pdir)}", shell=True)
+        subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir)])
 
     return {
         "doc": "Execute a finn compilation and synthesis.",
@@ -225,10 +227,7 @@ def task_pythondriver():
                 + ")"
             )
         driver_dir = os.path.join(os.path.abspath(pdir), output_dirs[0], "deploy", "driver")
-        subprocess.run(
-            f"{job_exec_prefix}{run_python_driver} {driver_dir}",
-            shell=True,
-        )
+        subprocess.run([job_exec_prefix, run_python_driver, driver_dir])
 
     return {
         "doc": "Execute the python driver of a project, print the results on screen",
@@ -243,7 +242,7 @@ def task_dmkbuildfolder():
     def remake_build_folder():
         bdir = os.path.join("finn-cpp-driver", "build")
         if os.path.isdir(bdir):
-            subprocess.run(f"rm -rf {bdir}", shell=True, stdout=subprocess.PIPE)
+            shutil.rmtree(bdir) 
         os.mkdir(bdir)
 
     return {
@@ -258,18 +257,11 @@ def task_getfinndriver():
         if os.path.isdir("finn-cpp-driver"):
             return
 
-        subprocess.run(
-            f"git clone {finndriver_default_repo}",
-            shell=True,
-            cwd=".",
-        )
-        subprocess.run(f"git checkout {branch}", shell=True, cwd="./finn-cpp-driver")
-        subprocess.run("git submodule init;git submodule update", shell=True, stdout=subprocess.PIPE, cwd="finn-cpp-driver")
-        subprocess.run(
-            "./buildDependencies.sh",
-            shell=True,
-            cwd="./finn-cpp-driver",
-        )
+        subprocess.run(["git", "clone", finndriver_default_repo])
+        subprocess.run(["git", "checkout", branch], cwd="finn-cpp-driver")
+        subprocess.run(["git", "submodule", "init"], cwd="fin-cpp-driver")
+        subprocess.run(["git", "submodule", "update"], cwd="fin-cpp-driver")
+        subprocess.run(["bash", "buildDependencies.sh"], cwd="finn-cpp-driver")
 
     return {
         "doc": "Clone the finn-cpp-driver git repository and run the setup script",
@@ -343,10 +335,7 @@ def task_cppdriver():
             # TODO: Currently if only testing the input parameter has to be filled with an existing file. Fix this
             print("Running driver now!")
             driver_dir = os.path.join(get_project_dir_name(name), outdirs[0], "driver")
-            subprocess.run(
-                f"{job_exec_prefix}{run_cpp_driver} {driver_dir}",
-                shell=True,
-            )
+            subprocess.run([job_exec_prefix, run_cpp_driver, driver_dir])
             print("Finished running driver!")
         else:
             print("NOT IMPLEMENTED")
