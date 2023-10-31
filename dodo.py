@@ -166,11 +166,11 @@ def inst_build_template(name):
     pdir, pname = get_project_dir_name(name)
     basename = pname + ".onnx"
     if not os.path.isfile(os.path.join(pdir, "build.py")):
-        subprocess.run(["cp", finn_build_template, pdir])
-        subprocess.run(["mv", finn_build_template, "build.py"], cwd=pdir)
-        
-        # ? Ugly string manipulation, improve at some point
-        subprocess.run(["sed", "-i", "-e", f"\"s/<ONNX_INPUT_NAME>/{basename}/g\"", "build.py"], cwd=pdir)
+        buildscript = None
+        with open(finn_build_template, 'r') as f:
+            buildscript = f.read()
+        with open(os.path.join(pdir, "build.py"), 'w+'):
+            f.write(buildscript.replace("<ONNX_INPUT_NAME>", basename))
         print("build.py templated! Please edit the build.py to your liking.")
 
 
@@ -188,8 +188,6 @@ def task_fmkproject():
     }
 
 
-# TODO: Update with replacement of make.sh script
-# TODO: Executes regardless of dependencies right now. Fix that
 def task_finn():
     def run_synth_for_onnx_name(name):
         pname = os.path.basename(name[0]).replace(".onnx", "")
@@ -198,12 +196,30 @@ def task_finn():
         subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir)])
 
     return {
-        "doc": "Execute a finn compilation and synthesis.",
+        "doc": "Execute a finn compilation and synthesis, based on a given input file. Also creates a project if not already existing.",
         "pos_arg": "name",
         "actions": [
             (create_project_dir_if_needed,),
             (copy_onnx_file,),
             (inst_build_template,),
+            (run_synth_for_onnx_name,),
+        ],
+        "verbosity": 2,
+    }
+
+
+def task_finnp():
+    def run_synth_for_onnx_name(name):
+        pdir = os.path.join(".", name)
+        if not os.path.isidr(pdir):
+            print("Error: Project directory " + pdir + " doesnt exist!")
+            sys.exit()
+        subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir)])
+
+    return {
+        "doc": "Execute a finn compilation and synthesis based on a project name. Requires the project directory to exist first already.",
+        "pos_arg": "name",
+        "actions": [
             (run_synth_for_onnx_name,),
         ],
         "verbosity": 2,
@@ -259,8 +275,8 @@ def task_getfinndriver():
 
         subprocess.run(["git", "clone", finndriver_default_repo])
         subprocess.run(["git", "checkout", branch], cwd="finn-cpp-driver")
-        subprocess.run(["git", "submodule", "init"], cwd="fin-cpp-driver")
-        subprocess.run(["git", "submodule", "update"], cwd="fin-cpp-driver")
+        subprocess.run(["git", "submodule", "init"], cwd="finn-cpp-driver")
+        subprocess.run(["git", "submodule", "update"], cwd="finn-cpp-driver")
         subprocess.run(["bash", "buildDependencies.sh"], cwd="finn-cpp-driver")
 
     return {
