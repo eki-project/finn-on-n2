@@ -169,7 +169,7 @@ def inst_build_template(name):
         buildscript = None
         with open(finn_build_template, 'r') as f:
             buildscript = f.read()
-        with open(os.path.join(pdir, "build.py"), 'w+'):
+        with open(os.path.join(pdir, "build.py"), 'w+') as f:
             f.write(buildscript.replace("<ONNX_INPUT_NAME>", basename))
         print("build.py templated! Please edit the build.py to your liking.")
 
