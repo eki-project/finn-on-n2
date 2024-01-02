@@ -210,8 +210,8 @@ def task_finn():
 
 def task_finnp():
     def run_synth_for_onnx_name(name):
-        pdir = os.path.join(".", name)
-        if not os.path.isidr(pdir):
+        pdir = os.path.join(".", name[0])
+        if not os.path.isdir(pdir):
             print("Error: Project directory " + pdir + " doesnt exist!")
             sys.exit()
         subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir)])
