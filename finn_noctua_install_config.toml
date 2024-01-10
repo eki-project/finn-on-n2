@@ -8,9 +8,20 @@ dev_mode = true
 build_template = "build_template.py"
 repositories.default = "git@github.com:Xilinx/finn.git"
 repositories.eki = "git@github.com:eki-project/finn-internal.git"
-default_repository = "eki"
-default_branch = "feature/c_driver"
+default_repository = "default"
+default_branch = "dev"
 
+[build.envvars]
+SINGULARITY_CACHEDIR="$WORKING_DIR/SINGULARITY_CACHE"
+SINGULARITY_TMPDIR="$WORKING_DIR/SINGULARITY_TMP"
+FINN_HOST_BUILD_DIR="$WORKING_DIR/FINN_TMP"
+FINN_XILINX_PATH="/opt/software/FPGA/Xilinx"
+FINN_XILINX_VERSION=2022.1
+FINN_DOCKER_PREBUILT=1
+FINN_DOCKER_GPU=0
+LC_ALL="C"
+PYTHONUNBUFFERED=1
+NUM_DEFAULT_WORKERS=28
 
 [finn_driver]
 default_repository = "git@github.com:eki-project/finn-cpp-driver.git"
@@ -22,7 +33,8 @@ default_compile_mode = "Release"
 type = "cluster"
 driver_compiler_prefix_commands = "ml fpga;ml xilinx/xrt/2.14;ml devel/Doxygen/1.9.5-GCCcore-12.2.0;ml compiler/GCC/12.2.0;ml devel/CMake/3.24.3-GCCcore-12.2.0;"
 job_execution = "sbatch"
-finn_build_script = "finn_build_single_job.sh"
+finn_build_script = "finn_build_cluster.sh"
+finn_build_script_template = "finn_build_cluster_template.sh"
 cppdriver_run_script = "run_cpp_driver.sh"
 pythondriver_run_script = "run_python_driver.sh"
 
@@ -31,6 +43,7 @@ pythondriver_run_script = "run_python_driver.sh"
 type = "normal"
 driver_compiler_prefix_commands = ""
 job_execution = "bash"
-finn_build_script = ""
+finn_build_script = "finn_build_local.sh"
+finn_build_script_template = "finn_build_local_template.sh"
 cppdriver_run_script = ""
 pythondriver_run_script = ""

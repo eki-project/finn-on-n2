@@ -25,13 +25,17 @@ DOIT_CONFIG = {"action_string_formatting": "new", "default_tasks": ["finn-doit-s
 
 # TODO: Implement possibility to specify board and part numbers here
 
-#* TASK Configuration 
+#* TASK Configuration
+
+# TODO: Enable setting of environment variables in the finn build script instead of predefined ones
+
 environment = config["general"]["used_environment"]
 dev_mode = config["general"]["dev_mode"]
 driver_required_commands = config["environment"][environment]["driver_compiler_prefix_commands"]
 job_exec_prefix = config["environment"][environment]["job_execution"]
 
 finn_build_script = config["environment"][environment]["finn_build_script"]
+finn_build_script_template = config["environment"][environment]["finn_build_script_template"]
 cppdriver_run_script = config["environment"][environment]["cppdriver_run_script"]
 pythondriver_run_script = config["environment"][environment]["pythondriver_run_script"]
 
@@ -44,6 +48,8 @@ finn_build_template = config["finn"]["build_template"]
 finndriver_default_repo = config["finn_driver"]["default_repository"]
 finndriver_default_branch = config["finn_driver"]["default_branch"]
 finndriver_default_compilemode = config["finn_driver"]["default_compile_mode"]
+
+config_envvars = config["build"]["envvars"]
 
 # The folder which _contains_ finn, FINN_TMP, SINGULARITY_CACHE, etc.
 os.environ["FINN_WORKDIR"] = os.path.abspath(os.getcwd())
@@ -61,7 +67,7 @@ def decorate_with_name(task):
 
 # * SETUP
 def task_finn_doit_setup():
-    td = ["getfinn"]
+    td = ["getfinn", "setenvvars"]
     # Only download the driver and its dependencies as well, if the dev mode is active, to save time for normal users
     if dev_mode:
         td += ["getfinndriver", "dmkbuildfolder"]
@@ -73,6 +79,40 @@ def task_finn_doit_setup():
         "actions": []
     }
 
+# * WRITE ENVIRONMENT VARIABLES INTO BUILD SCRIPT
+def task_setenvvars():
+    def edit_template():
+        # Read template file
+        text = ""
+        if not os.path.isfile(finn_build_script_template):
+            print("The template file for the FINN build shell script could not be found!")
+            sys.exit()
+
+        with open(finn_build_script_template, 'r') as f:
+            text = f.read()
+        
+        # Insert variables
+        text = text.replace("<FINN_WORKDIR>", os.environ["FINN_WORKDIR"])
+        vars = ""
+        for envvar_name, envvar_value in config_envvars.items():
+            vars += f"export {envvar_name}=\"{envvar_value}\"\n"
+        text = text.replace("<SET_ENVVARS>", vars)
+
+        # Write back out
+        with open(finn_build_script, 'w+') as f:
+            f.write(text)
+        
+    def delete_old_script():
+        subprocess.run(["rm", "-f", "finn_build_single_job.sh"], stdout=subprocess.PIPE)
+
+    return {
+        "doc": "Deletes the current build jobscript and creates a new one, using the environment variables in the configuration. If needed, you can use the variable $WORKING_DIR to refer to the directory the dodo file resides in, or just pass absolute paths.",
+        "verbosity": 2,
+        "actions": [
+            (delete_old_script,),
+            (edit_template,)
+        ]
+    }
 
 # * CLONE FINN
 def task_getfinn():
@@ -205,6 +245,16 @@ def task_finn():
             (run_synth_for_onnx_name,),
         ],
         "verbosity": 2,
+    }
+
+def task_cleanup():
+    return {
+        "doc": "Clean up files created during a FINN run. This includes FINN project files and directories (!!) as well as logs (only in the cluster env).",
+        "actions": [
+            CmdAction(["rm", "*.out"]),
+            CmdAction(["rm", "-r", "FINN_TMP/*"])
+        ]
+
     }
 
 

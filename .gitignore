@@ -1,1 +1,3 @@
 .doit.db
+.pyc
+__pycache__/dodo.cpython-310.pyc
