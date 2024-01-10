@@ -13,7 +13,7 @@ from doit.action import CmdAction
 
 #* Import configuration
 config = None
-with open("finn_noctua_install_config.toml", "r") as f:
+with open("config.toml", "r") as f:
     config = toml.loads(f.read())
 if config is None:
     print("Failed to read config file! Check for syntax errors!")
@@ -22,13 +22,9 @@ if config is None:
 
 #* DOIT Configuration
 DOIT_CONFIG = {"action_string_formatting": "new", "default_tasks": ["finn-doit-setup"]}
-
 # TODO: Implement possibility to specify board and part numbers here
 
 #* TASK Configuration
-
-# TODO: Enable setting of environment variables in the finn build script instead of predefined ones
-
 environment = config["general"]["used_environment"]
 dev_mode = config["general"]["dev_mode"]
 driver_required_commands = config["environment"][environment]["driver_compiler_prefix_commands"]
