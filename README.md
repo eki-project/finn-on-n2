@@ -1,9 +1,16 @@
-# finn on noctua2
+# finn-on-n2
 __IMPORANT__: _Please make sure that you know the contents of the configuration file. The data from the configuration file is used for paths and commands and will be executed. Read the config file beforehand to avoid unwanted code execution!_
+
+This git repository is supposed to help making the setup of FINN easier by automating tasks using the _doit_ package.
+
 # Usage
 * This requires the updated run-docker.sh script with Singularity support: https://github.com/Xilinx/finn/pull/868
 * Remember to specify your own project in the sbatch parameters for cluster usage
 * You need to have Vitis / Vivado activated in your environment
+
+## Installation
+* Clone this repository
+* Look into the .toml configuration file. Set the values you need and save
 
 Run 
 
@@ -34,31 +41,6 @@ For a complete usage manual refer to the N2 documentation.
 
 If something does not work as expected, please open an issue, or write directly to `bjarne.wintermann@uni-paderborn.de`
 
-# Default File Structure
-This is the default file structure after a finn and driver were installed and an example ONNX file was compiled and executed on FPGA:
-```
-dodo.py
-build_template.py
-finn_build_single_job.sh
-finn
- |--- ...
-finn-cpp-driver
- |--- ...
-myproject
- |--- myproject.onnx
- |--- build.py
- |--- build_results
-       |--- ...
-       |--- deploy
-             |--- bitfile
-                   |--- finn-accel.xclbin
-             |--- driver
-                   |--- driver.py
-                   |--- finn (compiled executable)
-                   |--- write_to_fpga.sh
-                   |--- config.json
-                   |--- FinnDatatypesHeader.h
-```
+# Configuration
 
-## To do
-- [ ] Collect common functions in one module
+TODO
