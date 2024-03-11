@@ -54,7 +54,6 @@ cfg_stitched_ip = build.DataflowBuildConfig(
         build_cfg.DataflowOutputType.OOC_SYNTH,
         build_cfg.DataflowOutputType.BITFILE,
         build_cfg.DataflowOutputType.PYNQ_DRIVER,
-        build_cfg.DataflowOutputType.CPP_DRIVER,
         build_cfg.DataflowOutputType.DEPLOYMENT_PACKAGE,
         ]
     )
