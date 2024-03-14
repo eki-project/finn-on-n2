@@ -66,6 +66,9 @@ def task_finn_doit_setup():
     td = ["getfinn", "setenvvars"]
     # Only download the driver and its dependencies as well, if the dev mode is active, to save time for normal users
     if dev_mode:
+        import sys
+        print("Building the C++ driver from this script is currently unsupported. Please set the dev mode flag to false for the time being.\nExiting..")
+        sys.exit()
         td += ["getfinndriver", "dmkbuildfolder"]
     
     yield {
