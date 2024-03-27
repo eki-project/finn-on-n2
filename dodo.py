@@ -292,7 +292,7 @@ def task_pythondriver():
                 + ")"
             )
         driver_dir = os.path.join(os.path.abspath(pdir), output_dirs[0], "deploy", "driver")
-        subprocess.run([job_exec_prefix, run_python_driver, driver_dir])
+        subprocess.run([job_exec_prefix, pythondriver_run_script, driver_dir])
 
     return {
         "doc": "Execute the python driver of a project, print the results on screen",
