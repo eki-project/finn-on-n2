@@ -4,10 +4,7 @@
 import subprocess
 import sys
 import os
-import json
-import platform
 import shutil
-import copy
 import toml
 from doit.action import CmdAction
 
@@ -51,7 +48,11 @@ config_envvars = config["build"]["envvars"]
 os.environ["FINN_WORKDIR"] = os.path.abspath(os.getcwd())
 
 # The path to the GHA, which builds the singularity/apptainer image
-os.environ["FINN_SINGULARITY"] = config["general"]["finn_singularity_gha"]
+if environment == "cluster":
+    print("Env Cluster selected: Using Singularity instead of Docker!")
+    
+    # Change field name from gha
+    os.environ["FINN_SINGULARITY"] = config["general"]["finn_singularity_gha"]
 
 # Insert a name to use the given task as a subtask
 def decorate_with_name(task):
@@ -66,6 +67,8 @@ def task_finn_doit_setup():
     td = ["getfinn", "setenvvars"]
     # Only download the driver and its dependencies as well, if the dev mode is active, to save time for normal users
     if dev_mode:
+        print("Currently, building the C++ driver in dev mode is unsupported. Please set dev mode to false in the config.toml file!\nExiting.")
+        sys.exit()
         td += ["getfinndriver", "dmkbuildfolder"]
     
     yield {
@@ -94,6 +97,14 @@ def task_setenvvars():
             vars += f"export {envvar_name}=\"{envvar_value}\"\n"
         text = text.replace("<SET_ENVVARS>", vars)
 
+        # Check for toolchain path
+        if "VIVADO_PATH" not in config_envvars.keys() or ("VIVADO_PATH" in config_envvars.keys() and config_envvars["VIVADO_PATH"] == ""):
+            print("WARNING: VIVADO_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
+        if "VITIS_PATH" not in config_envvars.keys() or ("VITIS_PATH" in config_envvars.keys() and config_envvars["VITIS_PATH"] == ""):
+            print("WARNING: VITIS_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
+        if "HLS_PATH" not in config_envvars.keys() or ("HLS_PATH" in config_envvars.keys() and config_envvars["HLS_PATH"] == ""):
+            print("WARNING: HLS_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
+
         # Write back out
         with open(finn_build_script, 'w+') as f:
             f.write(text)
@@ -109,6 +120,9 @@ def task_setenvvars():
             (edit_template,)
         ]
     }
+
+# * RUN QUICKTESTS
+
 
 # * CLONE FINN
 def task_getfinn():

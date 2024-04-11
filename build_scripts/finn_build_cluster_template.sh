@@ -13,6 +13,8 @@
 #SBATCH --cpus-per-task 8
 #SBATCH --mem-per-cpu 16G
 
+echo "Running the cluster/remote build script"
+
 WORKING_DIR=<FINN_WORKDIR>
 
 # For FINN
