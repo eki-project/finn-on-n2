@@ -31,7 +31,7 @@ cfg_stitched_ip = build.DataflowBuildConfig(
         "step_measure_rtlsim_performance",
         "step_out_of_context_synthesis",
         "step_synthesize_bitfile",
-        "step_make_cpp_driver",
+        # "step_make_cpp_driver",
         "step_make_pynq_driver",
         "step_deployment_package",
     ],
@@ -54,7 +54,6 @@ cfg_stitched_ip = build.DataflowBuildConfig(
         build_cfg.DataflowOutputType.OOC_SYNTH,
         build_cfg.DataflowOutputType.BITFILE,
         build_cfg.DataflowOutputType.PYNQ_DRIVER,
-        build_cfg.DataflowOutputType.CPP_DRIVER,
         build_cfg.DataflowOutputType.DEPLOYMENT_PACKAGE,
         ]
     )
