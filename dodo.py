@@ -38,10 +38,6 @@ finn_default_repo = finn_repos[finn_default_repo_name]
 finn_default_branch = config["finn"]["default_branch"]
 finn_build_template = config["finn"]["build_template"]
 
-finndriver_default_repo = config["finn_driver"]["default_repository"]
-finndriver_default_branch = config["finn_driver"]["default_branch"]
-finndriver_default_compilemode = config["finn_driver"]["default_compile_mode"]
-
 config_envvars = config["build"]["envvars"]
 
 # The folder which _contains_ finn, FINN_TMP, SINGULARITY_CACHE, etc.
@@ -101,6 +97,20 @@ def task_setenvvars():
             print("WARNING: VITIS_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
         if "HLS_PATH" not in config_envvars.keys() or ("HLS_PATH" in config_envvars.keys() and config_envvars["HLS_PATH"] == ""):
             print("WARNING: HLS_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
+
+        print()
+        
+        if "VIVADO_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["VIVADO_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
+            print("WARNING: The paths or versions of FINN_XILINX_PATH and VIVADO_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
+
+        if "VITIS_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["VITIS_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
+            print("WARNING: The paths or versions of FINN_XILINX_PATH and VITIS_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
+
+        if "HLS_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["HLS_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
+            print("WARNING: The paths or versions of FINN_XILINX_PATH and HLS_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
+        
+
+        # TODO: Make checks for versions as well
 
         # Write back out
         with open(finn_build_script, 'w+') as f:
@@ -244,12 +254,15 @@ def task_cleanup():
 
 
 # * RUN FINN FLOW ON TARGET PROJECT
-def task_run():
+def task_execute():
     def run_synth_for_onnx_name(name):
         pdir = os.path.join(".", name[0])
         if not os.path.isdir(pdir):
             print("Error: Project directory " + pdir + " doesnt exist!")
             sys.exit()
+            
+        # TODO: This is a workaround. As soon as custom argument passes are possible, deprecate the use of env variables
+        os.environ["BUILD_FLOW_RESUME_STEP"] = ""
         subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir)])
 
     return {
@@ -270,7 +283,10 @@ def task_resume():
         if not os.path.isdir(pdir):
             print("Error: Project directory " + pdir + " doesnt exist!")
             sys.exit()
-        subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir), step])
+        
+        # TODO: This is a workaround. As soon as custom argument passes are possible, deprecate the use of env variables
+        os.environ["BUILD_FLOW_RESUME_STEP"] = step
+        subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir)])
 
     return {
         "doc": "Execute a finn compilation and synthesis based on a project name. Requires the project directory to exist first already. (doit resume <project-name> <step-name>)",

@@ -1,7 +1,7 @@
 [general]
 used_environment = "cluster"
 singularity_image = "oras://ghcr.io/eki-project/experiment-manager/finn_apptainer_xilinx:dev"
-dev_mode = true
+dev_mode = false
 
 
 [finn]
@@ -15,12 +15,12 @@ default_branch = "dev"
 SINGULARITY_CACHEDIR="$WORKING_DIR/SINGULARITY_CACHE"
 SINGULARITY_TMPDIR="$WORKING_DIR/SINGULARITY_TMP"
 FINN_HOST_BUILD_DIR="$WORKING_DIR/FINN_TMP"
-FINN_XILINX_PATH="/opt/software/FPGA/Xilinx"
-FINN_XILINX_VERSION=2022.1
-VIVADO_PATH=""
-VITIS_PATH=""
-HLS_PATH=""
-FINN_DOCKER_PREBUILT=1
+FINN_XILINX_PATH="/tools/Xilinx"
+FINN_XILINX_VERSION=2023.1
+VIVADO_PATH="/tools/Xilinx/Vivado/2023.1"
+VITIS_PATH="/tools/Xilinx/Vitis/2023.1"
+HLS_PATH="/tools/Xilinx/Vitis_HLS/2023.1"
+FINN_DOCKER_PREBUILT=0
 FINN_DOCKER_GPU=0
 LC_ALL="C"
 PYTHONUNBUFFERED=1
