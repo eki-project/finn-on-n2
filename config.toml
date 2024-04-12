@@ -1,6 +1,6 @@
 [general]
 used_environment = "cluster"
-finn_singularity_gha = "oras://ghcr.io/eki-project/experiment-manager/finn_apptainer_xilinx:dev"
+singularity_image = "oras://ghcr.io/eki-project/experiment-manager/finn_apptainer_xilinx:dev"
 dev_mode = true
 
 
@@ -25,11 +25,6 @@ FINN_DOCKER_GPU=0
 LC_ALL="C"
 PYTHONUNBUFFERED=1
 NUM_DEFAULT_WORKERS=28
-
-[finn_driver]
-default_repository = "git@github.com:eki-project/finn-cpp-driver.git"
-default_branch = "dev"
-default_compile_mode = "Release"
 
 
 [environment.cluster]

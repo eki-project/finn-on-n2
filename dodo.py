@@ -19,7 +19,7 @@ if config is None:
 
 #* DOIT Configuration
 DOIT_CONFIG = {"action_string_formatting": "new", "default_tasks": ["finn-doit-setup"]}
-# TODO: Implement possibility to specify board and part numbers here
+
 
 #* TASK Configuration
 environment = config["general"]["used_environment"]
@@ -47,12 +47,10 @@ config_envvars = config["build"]["envvars"]
 # The folder which _contains_ finn, FINN_TMP, SINGULARITY_CACHE, etc.
 os.environ["FINN_WORKDIR"] = os.path.abspath(os.getcwd())
 
-# The path to the GHA, which builds the singularity/apptainer image
+# The path to the GHA or Path, which builds the singularity/apptainer image
 if environment == "cluster":
-    print("Env Cluster selected: Using Singularity instead of Docker!")
-    
-    # Change field name from gha
-    os.environ["FINN_SINGULARITY"] = config["general"]["finn_singularity_gha"]
+    print("Cluster environment selected: Using Singularity instead of Docker!")
+    os.environ["FINN_SINGULARITY"] = config["general"]["singularity_image"]
 
 # Insert a name to use the given task as a subtask
 def decorate_with_name(task):
@@ -64,21 +62,20 @@ def decorate_with_name(task):
 
 # * SETUP
 def task_finn_doit_setup():
-    td = ["getfinn", "setenvvars"]
     # Only download the driver and its dependencies as well, if the dev mode is active, to save time for normal users
     if dev_mode:
         print("Currently, building the C++ driver in dev mode is unsupported. Please set dev mode to false in the config.toml file!\nExiting.")
         sys.exit()
-        td += ["getfinndriver", "dmkbuildfolder"]
     
     yield {
         "basename": "finn-doit-setup",
-        "doc": "Does a first time setup install finn, finn-cpp-driver and creating an envinfo.json, containing user data",
-        "task_dep": td,
+        "doc": "Retrieve FINN and create build shell scripts. If you update the env vars in config.toml it suffices to call \"setenvvars\" again to create new build scritps",
+        "task_dep": ["getfinn", "setenvvars"],
         "actions": []
     }
 
-# * WRITE ENVIRONMENT VARIABLES INTO BUILD SCRIPT
+
+# * WRITE ENVIRONMENT VARIABLES INTO BUILD SCRIPT AND MAKE A USABLE COPY OF THAT SCRIPT (INSTANTIATED)
 def task_setenvvars():
     def edit_template():
         # Read template file
@@ -113,15 +110,13 @@ def task_setenvvars():
         subprocess.run(["rm", "-f", "finn_build_single_job.sh"], stdout=subprocess.PIPE)
 
     return {
-        "doc": "Deletes the current build jobscript and creates a new one, using the environment variables in the configuration. If needed, you can use the variable $WORKING_DIR to refer to the directory the dodo file resides in, or just pass absolute paths.",
+        "doc": "Deletes the current build jobscripts and creates new ones, using the environment variables in the configuration. If needed, you can use the variable $WORKING_DIR to refer to the directory the dodo file resides in, or just pass absolute paths.",
         "verbosity": 2,
         "actions": [
             (delete_old_script,),
             (edit_template,)
         ]
     }
-
-# * RUN QUICKTESTS
 
 
 # * CLONE FINN
@@ -150,7 +145,7 @@ def task_getfinn():
         subprocess.run(["git", "checkout", branch], cwd="finn")
 
     return {
-        "doc": "Clone the specified repository and switch to a given branch. Should only be executed once",
+        "doc": "Clone the specified repository and switch to a given branch. Should only be executed once. Defaults are set in config.toml",
         "params": [
             {
                 "name": "branch",
@@ -179,40 +174,39 @@ def task_getfinn():
 # * FORCE GIT PULL ON FINN ITSELF
 def task_ffupdate():
     return {
-        "doc": "FINN forced-update. Overwrite all changes locally and pull form origin",
+        "doc": "FINN forced-update. Overwrite all changes locally and pull from origin",
         "actions": [CmdAction("git pull;git reset --hard;git pull", cwd="finn")],
         "verbosity": 2,
     }
 
 
 #### FOR FINN PROJECT CREATION ####
-def get_project_dir_name(name):
+ProjectDirectoryPath = str
+ProjectName = str
+
+def get_project_dir_name(name: list[str]) -> tuple[ProjectDirectoryPath, ProjectName]:
     #! This expects a LIST (as pos_arg from doit)
     pname = os.path.basename(name[0]).replace(".onnx", "")
     pdir = os.path.join(".", pname)
     return pdir, pname
 
 
-def purge_old_builds_func(builddir: str, purge_older_builds: bool):
-    if purge_older_builds:
-        # TODO
-        pass
-
-def create_project_dir_if_needed(name):
+def create_project_dir_if_needed(name: list[str]) -> None:
     pdir, pname = get_project_dir_name(name)
     if not os.path.isdir(pdir):
         os.mkdir(pdir)
         print("Created project folder under the path " + pdir)
-    purge_old_builds_func(pdir, True)
 
 
-def copy_onnx_file(name):
+def copy_onnx_file(name: list[str]) -> None:
+    """Copy the targeted onnx file into the project directory. If there already is one, it doesn't get replaced."""
     pdir, pname = get_project_dir_name(name)
     if not os.path.isfile(os.path.join(pdir, pname + ".onnx")):
         subprocess.run(["cp", name[0], pdir])
 
 
-def inst_build_template(name):
+def inst_build_template(name: list[str]) -> None:
+    """Copy and instantiate the build template into the given project directory"""
     pdir, pname = get_project_dir_name(name)
     basename = pname + ".onnx"
     if not os.path.isfile(os.path.join(pdir, "build.py")):
@@ -224,10 +218,10 @@ def inst_build_template(name):
         print("build.py templated! Please edit the build.py to your liking.")
 
 
-# * MAKE FINN PROJECT FOLDER
-def task_fmkproject():
+# * MAKE FINN PROJECT
+def task_create():
     return {
-        "doc": "Create a finn project folder. Only executes the different steps, depending on whether they are needed",
+        "doc": "Create a finn project folder. Only executes the different steps if required",
         "actions": [
             (create_project_dir_if_needed,),
             (copy_onnx_file,),
@@ -238,25 +232,7 @@ def task_fmkproject():
     }
 
 
-def task_finn():
-    def run_synth_for_onnx_name(name):
-        pname = os.path.basename(name[0]).replace(".onnx", "")
-        basename = pname + ".onnx"
-        pdir = os.path.join(".", pname)
-        subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir)])
-
-    return {
-        "doc": "Execute a finn compilation and synthesis, based on a given input file. Also creates a project if not already existing.",
-        "pos_arg": "name",
-        "actions": [
-            (create_project_dir_if_needed,),
-            (copy_onnx_file,),
-            (inst_build_template,),
-            (run_synth_for_onnx_name,),
-        ],
-        "verbosity": 2,
-    }
-
+# * DELETE OLD FINN FILES
 def task_cleanup():
     return {
         "doc": "Clean up files created during a FINN run. This includes FINN project files and directories (!!) as well as logs (only in the cluster env).",
@@ -264,11 +240,11 @@ def task_cleanup():
             CmdAction(["rm", "*.out"]),
             CmdAction(["rm", "-r", "FINN_TMP/*"])
         ]
-
     }
 
 
-def task_finnp():
+# * RUN FINN FLOW ON TARGET PROJECT
+def task_run():
     def run_synth_for_onnx_name(name):
         pdir = os.path.join(".", name[0])
         if not os.path.isdir(pdir):
@@ -309,126 +285,5 @@ def task_pythondriver():
         "doc": "Execute the python driver of a project, print the results on screen",
         "pos_arg": "arg",
         "actions": [(run_python_driver,)],
-        "verbosity": 2,
-    }
-
-
-# * MAKE BUILD FOLDER FOR FINN COMPILER
-def task_dmkbuildfolder():
-    def remake_build_folder():
-        bdir = os.path.join("finn-cpp-driver", "build")
-        if os.path.isdir(bdir):
-            shutil.rmtree(bdir) 
-        os.mkdir(bdir)
-
-    return {
-        "actions": [(remake_build_folder,)],
-        "doc": "Delete and remake the finn-cpp-driver/build folder. Does NOT call cmake for config!",
-    }
-
-
-# * CLONE FINN C++ DRIVER
-def task_getfinndriver():
-    def clone(branch):
-        if os.path.isdir("finn-cpp-driver"):
-            return
-
-        subprocess.run(["git", "clone", finndriver_default_repo])
-        subprocess.run(["git", "checkout", branch], cwd="finn-cpp-driver")
-        subprocess.run(["git", "submodule", "init"], cwd="finn-cpp-driver")
-        subprocess.run(["git", "submodule", "update"], cwd="finn-cpp-driver")
-        subprocess.run(["bash", "buildDependencies.sh"], cwd="finn-cpp-driver")
-
-    return {
-        "doc": "Clone the finn-cpp-driver git repository and run the setup script",
-        "params": [
-            {
-                "name": "branch",
-                "long": "branch",
-                "short": "b",
-                "type": str,
-                "default": finndriver_default_branch,
-            }
-        ],
-        "actions": [(clone,)],
-        "targets": ["finn-cpp-driver/buildDependencies.sh"],
-    }
-
-
-# * FORCE GIT PULL ON FINN DRIVER
-def task_dfupdate():
-    return {
-        "doc": "Driver forced-update. Overwrite all changes locally and pull form origin",
-        "actions": [CmdAction("git pull;git reset --hard;git pull", cwd="finn-cpp-driver")],
-        "verbosity": 2,
-    }
-
-
-# * EXECUTE FINNBOOST BUILD DEPENDENCIES SCRIPT
-def task_dbuilddeps():
-    return {
-        "doc": "Execute the buildDependencies script to build FinnBoost for the driver. Needs to be done once before compiling for the first time. [This task is never executed automatically]",
-        "actions": [
-            CmdAction(
-                "./buildDependencies.sh",
-                cwd="finn-cpp-driver",
-            )
-        ],
-    }
-
-
-# * COMPILE FINN DRIVER
-# TODO: take the name of the project as pos_arg, so that the config.json and Finn.h header can be read directly from the project directory
-def task_dcompile():
-    return {
-        "params": [
-            {
-                "name": "mode",
-                "long": "mode",
-                "short": "m",
-                "type": str,
-                "default": finndriver_default_compilemode,
-            }
-        ],
-        "doc": "Compile the FINN C++ driver in the given mode",
-        "targets": ["finn-cpp-driver/build/src/finn"],
-        "actions": [
-            CmdAction("cmake -DCMAKE_BUILD_TYPE={mode} ..", cwd="finn-cpp-driver/build"),
-            CmdAction("cmake --build . --target finn", cwd="finn-cpp-driver/build"),
-        ],
-        "task_dep": ["dmkbuildfolder"],
-        "verbosity": 2,
-    }
-
-
-def task_cppdriver():
-    def run_cpp_driver(mode, name):
-        outdirs = [x for x in os.listdir(get_project_dir_name(name)) if x.startswith("out")]
-        if len(outdirs) == 0:
-            print("No output folder available to run driver from. Please finish a FINN compilation first!")
-            sys.exit()
-        if mode == "test":
-            # TODO: Currently if only testing the input parameter has to be filled with an existing file. Fix this
-            print("Running driver now!")
-            driver_dir = os.path.join(get_project_dir_name(name), outdirs[0], "driver")
-            subprocess.run([job_exec_prefix, run_cpp_driver, driver_dir])
-            print("Finished running driver!")
-        else:
-            print("NOT IMPLEMENTED")
-            sys.exit()
-
-    return {
-        "params": [
-            {
-                "name": "mode",
-                "long": "mode",
-                "short": "m",
-                "type": str,
-                "default": "test",
-            }
-        ],
-        "pos_arg": "name",
-        "doc": 'Run the driver of the finished compiled FINN project of the given name. This requires that the results of the compilation are found in a directory starting with "out", which has to contain the bitfile in bitfile/ and the finn executable and the config json in driver/. If multiple dirs with out are given, the first sorted is used',
-        "actions": [(run_cpp_driver,)],
         "verbosity": 2,
     }
