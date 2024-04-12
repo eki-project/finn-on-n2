@@ -262,6 +262,26 @@ def task_run():
     }
 
 
+# * RESUME FORM PREVIOUS STEP
+def task_resume():
+    def run_synth_for_onnx_name_from_step(name):
+        pdir = os.path.join(".", name[0])
+        step = name[1]
+        if not os.path.isdir(pdir):
+            print("Error: Project directory " + pdir + " doesnt exist!")
+            sys.exit()
+        subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir), step])
+
+    return {
+        "doc": "Execute a finn compilation and synthesis based on a project name. Requires the project directory to exist first already. (doit resume <project-name> <step-name>)",
+        "pos_arg": "name",
+        "actions": [
+            (run_synth_for_onnx_name_from_step,),
+        ],
+        "verbosity": 2,
+    }
+
+
 # TODO: Only test for now, change that
 # * RUN PYTHON DRIVER IF EXISTING
 def task_pythondriver():
