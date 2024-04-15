@@ -39,6 +39,7 @@ finn_repos = config["finn"]["repositories"]
 finn_default_repo_name = config["finn"]["default_repository"]
 finn_default_repo = finn_repos[finn_default_repo_name]
 finn_default_branch = config["finn"]["default_branch"]
+finn_default_commit = config["finn"]["default_commit_hash"]
 finn_build_template = config["finn"]["build_template"]
 
 config_envvars = config["build"]["envvars"]
@@ -156,6 +157,9 @@ def task_getfinn():
 
     def checkoutBranch(branch):
         subprocess.run(["git", "checkout", branch], cwd="finn")
+    
+    def checkoutCommit():
+        subprocess.run(["git", "checkout", finn_default_commit], cwd="finn", std=subprocess.PIPE)
 
     return {
         "doc": "Clone the specified repository and switch to a given branch. Should only be executed once. Defaults are set in config.toml",
@@ -179,6 +183,7 @@ def task_getfinn():
             (clone,),
             (renameIfEki,),
             (checkoutBranch,),
+            (checkoutCommit),
             (initSubmodules,)
         ],
     }

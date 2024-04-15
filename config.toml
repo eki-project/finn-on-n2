@@ -9,7 +9,8 @@ build_template = "build_template.py"
 repositories.default = "git@github.com:Xilinx/finn.git"
 repositories.eki = "git@github.com:eki-project/finn-internal.git"
 default_repository = "default"
-default_branch = "dev"
+default_branch = "main"
+default_commit_hash = "766e9fb" # Last commit before the v0.10 release of FINN
 
 [build.envvars]
 SINGULARITY_CACHEDIR="$WORKING_DIR/SINGULARITY_CACHE"
