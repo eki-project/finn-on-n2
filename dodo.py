@@ -55,7 +55,7 @@ if environment == "cluster":
     os.environ["FINN_SINGULARITY"] = config["general"]["singularity_image"]
 
 # * SETUP
-def task_finn_doit_setup() -> DoitDict:
+def task_finn_doit_setup():
     # Only download the driver and its dependencies as well, if the dev mode is active, to save time for normal users
     if dev_mode:
         print("Currently, building the C++ driver in dev mode is unsupported. Please set dev mode to false in the config.toml file!\nExiting.")
