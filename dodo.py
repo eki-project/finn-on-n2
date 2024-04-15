@@ -1,6 +1,9 @@
 # Python do-it file for managing FINN, the Finn-cpp-driver and running synthesis jobs
 # Work in progress!
 
+# TODO: Default config files for multiple environments, make them usable for example via something like
+# doit setenv cluster
+
 import subprocess
 import sys
 import os
@@ -260,7 +263,7 @@ def task_execute():
         if not os.path.isdir(pdir):
             print("Error: Project directory " + pdir + " doesnt exist!")
             sys.exit()
-            
+
         # TODO: This is a workaround. As soon as custom argument passes are possible, deprecate the use of env variables
         os.environ["BUILD_FLOW_RESUME_STEP"] = ""
         subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir)])

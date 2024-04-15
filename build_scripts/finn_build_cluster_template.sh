@@ -40,4 +40,4 @@ mkdir -p $WORKING_DIR/FINN_TMP
 
 
 cd $WORKING_DIR/finn
-./run-docker.sh build_custom $1 $2
+./run-docker.sh build_custom $1
