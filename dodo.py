@@ -12,8 +12,6 @@ from typing import Any, Generator
 import toml
 from doit.action import CmdAction
 
-DoitDict = Generator[dict[str, Any]]
-
 
 #* Import configuration
 config = None
