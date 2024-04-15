@@ -8,8 +8,12 @@ import subprocess
 import sys
 import os
 import shutil
+from typing import Any, Generator
 import toml
 from doit.action import CmdAction
+
+DoitDict = Generator[dict[str, Any]]
+
 
 #* Import configuration
 config = None
@@ -52,16 +56,8 @@ if environment == "cluster":
     print("Cluster environment selected: Using Singularity instead of Docker!")
     os.environ["FINN_SINGULARITY"] = config["general"]["singularity_image"]
 
-# Insert a name to use the given task as a subtask
-def decorate_with_name(task):
-    name = task.__name__.replace("task_", "")
-    t = task()
-    t.update({"name": "subtask-" + name})
-    return t
-
-
 # * SETUP
-def task_finn_doit_setup():
+def task_finn_doit_setup() -> DoitDict:
     # Only download the driver and its dependencies as well, if the dev mode is active, to save time for normal users
     if dev_mode:
         print("Currently, building the C++ driver in dev mode is unsupported. Please set dev mode to false in the config.toml file!\nExiting.")
