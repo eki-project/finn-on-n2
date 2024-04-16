@@ -153,7 +153,7 @@ def task_getfinn():
         subprocess.run(["git", "checkout", branch], cwd="finn")
     
     def checkoutCommit():
-        subprocess.run(["git", "checkout", finn_default_commit], cwd="finn", std=subprocess.PIPE)
+        subprocess.run(["git", "checkout", finn_default_commit], cwd="finn", stdout=subprocess.PIPE)
 
     return {
         "doc": "Clone the specified repository and switch to a given branch. Should only be executed once. Defaults are set in config.toml",
