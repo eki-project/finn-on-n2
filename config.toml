@@ -6,8 +6,8 @@ dev_mode = false
 
 [finn]
 build_template = "build_template.py"
-repositories.default = "git@github.com:Xilinx/finn.git"
-repositories.eki = "git@github.com:eki-project/finn-internal.git"
+repositories.default = "https://github.com/Xilinx/finn.git"
+repositories.eki = "https://github.com/eki-project/finn-internal.git"
 default_repository = "default"
 default_branch = "main"
 default_commit_hash = "04b9c9d" # Commit which merged singularity support
