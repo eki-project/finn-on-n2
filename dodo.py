@@ -12,11 +12,17 @@ from typing import Any, Generator, Optional
 import toml
 from doit.action import CmdAction
 import shlex
+import hashlib
 
 
 #* Helper functions
+
+
 def execute_in_finn(command_list: list[str]):
     subprocess.run(command_list, cwd="finn")
+
+def execute_here(command_list: list[str]):
+    subprocess.run(command_list)
 
 def read_from_file(fname: str) -> Optional[str]:
     try:
@@ -25,6 +31,19 @@ def read_from_file(fname: str) -> Optional[str]:
     except:
         return None
 
+
+##def check_config_outdated() -> bool:
+#    if not os.path.isfile(".info.json"):
+#        return True
+#    h = hashlib.sha256()
+#    conf = read_from_file("config.toml")
+#    if conf is None:
+#        print("ERROR: No config file found!")
+#        sys.exit()
+#    
+#    old_hash = read_from_file(".info.json")
+#    h.update(conf)
+#    if old_hash != h.hexdigest()
 
 def check_params(params: list[str]):
     if len(params) > 1:
@@ -155,7 +174,7 @@ def task_clonefinn():
     return {
         "doc": "Clone the specified repository and switch to a given branch. Should only be executed once. Defaults are set in config.toml",
         "actions": [
-            (execute_in_finn, [shlex.split(f"git clone {finn_default_repo}")]),
+            (execute_here, [shlex.split(f"git clone {finn_default_repo}")]),
             renameIfEki,
             (execute_in_finn, [shlex.split(f"git checkout {finn_default_branch}")]),
             checkout_if_commit_given,
@@ -186,7 +205,7 @@ def copy_onnx_file_to_project(name: ONNXFilePath):
         sys.exit()
     project_name = onnx_name_to_project_name(name)
     target = os.path.join(".", project_name, project_name + ".onnx")
-    if not os.path.isfile(name):
+    if not os.path.isfile(target):
         subprocess.run(shlex.split(f"cp {name} {target}"))
 
 
@@ -205,10 +224,11 @@ def create_finn_build_script(name: ProjectName):
 def task_create():
     def create_project(params: list[str]):
         check_params(params)
-        name = params[0]
-        create_project_dir(name)
-        copy_onnx_file_to_project(name)
-        create_finn_build_script(name)
+        onnx_name = params[0]
+        project_name = onnx_name_to_project_name(onnx_name)
+        create_project_dir(project_name)
+        copy_onnx_file_to_project(onnx_name)
+        create_finn_build_script(project_name)
 
     return {
         "doc": "Create a finn project folder. Only executes the different steps if required",
