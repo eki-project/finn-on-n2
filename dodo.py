@@ -8,9 +8,31 @@ import subprocess
 import sys
 import os
 import shutil
-from typing import Any, Generator
+from typing import Any, Generator, Optional
 import toml
 from doit.action import CmdAction
+import shlex
+
+
+#* Helper functions
+def execute_in_finn(command_list: list[str]):
+    subprocess.run(command_list, cwd="finn")
+
+def read_from_file(fname: str) -> Optional[str]:
+    try:
+        with open(fname, 'r') as f:
+            return f.read()
+    except:
+        return None
+
+
+def check_params(params: list[str]):
+    if len(params) > 1:
+        print("Received more than argument, please only supply one!")
+        sys.exit()
+    if len(params) == 0:
+        print("Please supply the required argument for this function!")
+        sys.exit()
 
 
 #* Import configuration
@@ -57,6 +79,7 @@ if environment == "cluster":
     print("Cluster environment selected: Using Singularity instead of Docker!")
     os.environ["FINN_SINGULARITY"] = config["general"]["singularity_image"]
 
+
 # * SETUP
 def task_finn_doit_setup():
     # Only download the driver and its dependencies as well, if the dev mode is active, to save time for normal users
@@ -67,7 +90,7 @@ def task_finn_doit_setup():
     yield {
         "basename": "finn-doit-setup",
         "doc": "Retrieve FINN and create build shell scripts. If you update the env vars in config.toml it suffices to call \"setenvvars\" again to create new build scritps",
-        "task_dep": ["getfinn", "setenvvars"],
+        "task_dep": ["clonefinn", "setenvvars"],
         "actions": []
     }
 
@@ -98,134 +121,101 @@ def task_setenvvars():
             print("WARNING: VITIS_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
         if "HLS_PATH" not in config_envvars.keys() or ("HLS_PATH" in config_envvars.keys() and config_envvars["HLS_PATH"] == ""):
             print("WARNING: HLS_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
-
-        print()
-        
         if "VIVADO_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["VIVADO_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
             print("WARNING: The paths or versions of FINN_XILINX_PATH and VIVADO_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
-
         if "VITIS_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["VITIS_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
             print("WARNING: The paths or versions of FINN_XILINX_PATH and VITIS_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
-
         if "HLS_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["HLS_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
             print("WARNING: The paths or versions of FINN_XILINX_PATH and HLS_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
-        
-
         # TODO: Make checks for versions as well
 
         # Write back out
         with open(finn_build_script, 'w+') as f:
             f.write(text)
-        
-    def delete_old_script():
-        subprocess.run(["rm", "-f", "finn_build_single_job.sh"], stdout=subprocess.PIPE)
 
     return {
         "doc": "Deletes the current build jobscripts and creates new ones, using the environment variables in the configuration. If needed, you can use the variable $WORKING_DIR to refer to the directory the dodo file resides in, or just pass absolute paths.",
         "verbosity": 2,
         "actions": [
-            (delete_old_script,),
-            (edit_template,)
+            edit_template
         ]
     }
 
 
 # * CLONE FINN
-def task_getfinn():
-    def clone():
-        if os.path.isdir("finn"):
-            return
-
-        print(f"Cloning into FINN at repository: {finn_default_repo_name}\nOn Branch: {finn_default_branch}\n")
-        if finn_default_commit != "": print(f"At commit: {finn_default_commit}")
-        print("\n\n")
-        subprocess.run(["git", "clone", finn_default_repo], stdout=subprocess.PIPE)
-        
-
+def task_clonefinn():
     def renameIfEki():
         if os.path.isdir("finn-internal"):
             os.rename("finn-internal", "finn")
 
-    def initSubmodules():
-        subprocess.run(["git", "submodule", "init"], cwd="finn", stdout=subprocess.PIPE)
-        subprocess.run(["git", "submodule", "update"], cwd="finn", stdout=subprocess.PIPE)
-
-    def checkoutBranch():
-        subprocess.run(["git", "checkout", finn_default_branch], cwd="finn")
-    
-    def checkoutCommit():
+    def checkout_if_commit_given(): 
         if finn_default_commit != "":
-            subprocess.run(["git", "checkout", finn_default_commit], cwd="finn", stdout=subprocess.PIPE)
+            execute_in_finn(shlex.split(f"git checkout {finn_default_commit}")) 
 
     return {
         "doc": "Clone the specified repository and switch to a given branch. Should only be executed once. Defaults are set in config.toml",
         "actions": [
-            (clone,),
-            (renameIfEki,),
-            (checkoutBranch,),
-            (checkoutCommit),
-            (initSubmodules,)
+            (execute_in_finn, [shlex.split(f"git clone {finn_default_repo}")]),
+            renameIfEki,
+            (execute_in_finn, [shlex.split(f"git checkout {finn_default_branch}")]),
+            checkout_if_commit_given,
+            (execute_in_finn, [shlex.split(f"git submodule init")]),
+            (execute_in_finn, [shlex.split(f"git submodule update")]),
+            
         ],
     }
 
 
-# * FORCE GIT PULL ON FINN ITSELF
-def task_ffupdate():
-    return {
-        "doc": "FINN forced-update. Overwrite all changes locally and pull from origin",
-        "actions": [CmdAction("git pull;git reset --hard;git pull", cwd="finn")],
-        "verbosity": 2,
-    }
-
-
-#### FOR FINN PROJECT CREATION ####
-ProjectDirectoryPath = str
+#### * FOR FINN PROJECT CREATION * ####
+ONNXFilePath = str
 ProjectName = str
 
-def get_project_dir_name(name: list[str]) -> tuple[ProjectDirectoryPath, ProjectName]:
-    #! This expects a LIST (as pos_arg from doit)
-    pname = os.path.basename(name[0]).replace(".onnx", "")
-    pdir = os.path.join(".", pname)
-    return pdir, pname
+
+def onnx_name_to_project_name(name: ONNXFilePath) -> ProjectName:
+    return os.path.basename(name).replace(".onnx", "")
 
 
-def create_project_dir_if_needed(name: list[str]) -> None:
-    pdir, pname = get_project_dir_name(name)
-    if not os.path.isdir(pdir):
-        os.mkdir(pdir)
-        print("Created project folder under the path " + pdir)
+def create_project_dir(name: ProjectName):
+    if not os.path.isdir(name):
+        os.mkdir(name)
 
 
-def copy_onnx_file(name: list[str]) -> None:
-    """Copy the targeted onnx file into the project directory. If there already is one, it doesn't get replaced."""
-    pdir, pname = get_project_dir_name(name)
-    if not os.path.isfile(os.path.join(pdir, pname + ".onnx")):
-        subprocess.run(["cp", name[0], pdir])
+def copy_onnx_file_to_project(name: ONNXFilePath):
+    if not os.path.isfile(name):
+        print(f"Cannot find ONNX file at {name}. Please specify a valid ONNX file path!")
+        sys.exit()
+    project_name = onnx_name_to_project_name(name)
+    target = os.path.join(".", project_name, project_name + ".onnx")
+    if not os.path.isfile(name):
+        subprocess.run(shlex.split(f"cp {name} {target}"))
 
 
-def inst_build_template(name: list[str]) -> None:
-    """Copy and instantiate the build template into the given project directory"""
-    pdir, pname = get_project_dir_name(name)
-    basename = pname + ".onnx"
-    if not os.path.isfile(os.path.join(pdir, "build.py")):
-        buildscript = None
-        with open(finn_build_template, 'r') as f:
-            buildscript = f.read()
-        with open(os.path.join(pdir, "build.py"), 'w+') as f:
-            f.write(buildscript.replace("<ONNX_INPUT_NAME>", basename))
-        print("build.py templated! Please edit the build.py to your liking.")
+def create_finn_build_script(name: ProjectName):
+    build_path = os.path.join(".", name, "build.py")
+    if not os.path.isfile(build_path):
+        buildscript = read_from_file(finn_build_template)
+        if buildscript is None:
+            print(f"Couldn't find build script template at {finn_build_template}. Please correct your config.toml!")
+            sys.exit()
+        with open(build_path, 'w+') as f:
+            f.write(buildscript.replace("<ONNX_INPUT_NAME>", os.path.join(".", name, name + ".onnx")))
 
 
 # * MAKE FINN PROJECT
 def task_create():
+    def create_project(params: list[str]):
+        check_params(params)
+        name = params[0]
+        create_project_dir(name)
+        copy_onnx_file_to_project(name)
+        create_finn_build_script(name)
+
     return {
         "doc": "Create a finn project folder. Only executes the different steps if required",
         "actions": [
-            (create_project_dir_if_needed,),
-            (copy_onnx_file,),
-            (inst_build_template,),
+            create_project
         ],
-        "pos_arg": "name",
+        "pos_arg": "params",
         "verbosity": 2,
     }
 
@@ -243,27 +233,29 @@ def task_cleanup():
 
 # * RUN FINN FLOW ON TARGET PROJECT
 def task_execute():
-    def run_synth_for_onnx_name(name):
-        pdir = os.path.join(".", name[0])
-        if not os.path.isdir(pdir):
-            print("Error: Project directory " + pdir + " doesnt exist!")
+    def run_synth_for_onnx_name(params: list[str]):
+        check_params(params)
+        name: ONNXFilePath = params[0]
+        if not os.path.isdir(name):
+            print("Error: Project directory " + name + " doesn't exist!")
             sys.exit()
 
         # TODO: This is a workaround. As soon as custom argument passes are possible, deprecate the use of env variables
         os.environ["BUILD_FLOW_RESUME_STEP"] = ""
-        subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir)])
+        subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(name)])
 
     return {
         "doc": "Execute a finn compilation and synthesis based on a project name. Requires the project directory to exist first already.",
-        "pos_arg": "name",
+        "pos_arg": "params",
         "actions": [
-            (run_synth_for_onnx_name,),
+            run_synth_for_onnx_name
         ],
         "verbosity": 2,
     }
 
 
 # * RESUME FORM PREVIOUS STEP
+# TODO: Rework this
 def task_resume():
     def run_synth_for_onnx_name_from_step(name):
         pdir = os.path.join(".", name[0])
@@ -289,25 +281,21 @@ def task_resume():
 # TODO: Only test for now, change that
 # * RUN PYTHON DRIVER IF EXISTING
 def task_pythondriver():
-    def run_python_driver(arg):
-        pdir, pname = get_project_dir_name(arg)
-        if not os.path.isdir(pdir):
-            print("No project directory found under the name " + pname + " and path " + os.path.abspath(pdir))
-        output_dirs = [x for x in os.listdir(pdir) if x.startswith("out_")]
+    def run_python_driver(params: list[str]):
+        check_params(params)
+        name = params[0]
+        if not os.path.isdir(name):
+            print("No project directory found under the name " + name)
+        output_dirs = [x for x in os.listdir(name) if x.startswith("out_")]
         if len(output_dirs) == 0:
-            print(
-                "Project with input name "
-                + pname
-                + " has no output folder! (Searched in "
-                + os.path.abspath(pdir)
-                + ")"
-            )
-        driver_dir = os.path.join(os.path.abspath(pdir), output_dirs[0], "deploy", "driver")
+            print("Tried to find valid output directoy in project directory. Make sure all output directories are prefixed with \"out_\", and contain the file deploy/driver/<...>.xclbin!")
+            sys.exit()
+        driver_dir = os.path.join(os.path.abspath(name), output_dirs[0], "deploy", "driver")
         subprocess.run([job_exec_prefix, pythondriver_run_script, driver_dir])
 
     return {
         "doc": "Execute the python driver of a project, print the results on screen",
-        "pos_arg": "arg",
+        "pos_arg": "params",
         "actions": [(run_python_driver,)],
         "verbosity": 2,
     }
