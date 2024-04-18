@@ -34,10 +34,21 @@ mkdir -p $WORKING_DIR/SINGULARITY_CACHE
 mkdir -p $WORKING_DIR/SINGULARITY_TMP
 mkdir -p $WORKING_DIR/FINN_TMP
 
+if [ -d "/dev/shm" ]; then
+  echo "Copying file to ramdisk"
+  cp -r $WORKING_DIR /dev/shm/temporary_finn_dir
+  WORKING_DIR=/dev/shm/temporary_finn_dir
+  echo "Done."
+fi
+
 
 <SET_ENVVARS>
 
 
-
 cd $WORKING_DIR/finn
 ./run-docker.sh build_custom $1
+
+if [ -d "/dev/shm" ]; then
+    echo "Copying files back"
+    cp -r $WORKING_DIR <FINN_WORKDIR>
+fi

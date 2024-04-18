@@ -15,6 +15,7 @@ default_branch = "main"
 default_commit_hash = "04b9c9d" # Commit which merged singularity support
 
 [build.envvars]
+# You can use $WORKING_DIR, which normally points to this directory, but can be changed in the build scripts template before the part where these variables are instanced
 SINGULARITY_CACHEDIR="$WORKING_DIR/SINGULARITY_CACHE"
 SINGULARITY_TMPDIR="$WORKING_DIR/SINGULARITY_TMP"
 FINN_HOST_BUILD_DIR="$WORKING_DIR/FINN_TMP"
