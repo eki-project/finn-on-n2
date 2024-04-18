@@ -41,7 +41,10 @@ finn_repos = config["finn"]["repositories"]
 finn_default_repo_name = config["finn"]["default_repository"]
 finn_default_repo = finn_repos[finn_default_repo_name]
 finn_default_branch = config["finn"]["default_branch"]
-finn_default_commit = config["finn"]["default_commit_hash"]
+if "default_commit_hash" in config["finn"].keys():
+    finn_default_commit = config["finn"]["default_commit_hash"]
+else:
+    finn_default_commit = ""
 finn_build_template = config["finn"]["build_template"]
 
 config_envvars = config["build"]["envvars"]
@@ -129,16 +132,14 @@ def task_setenvvars():
 
 # * CLONE FINN
 def task_getfinn():
-    def clone(source):
-        # TODO: Solve this using doit's choice system
-        if source not in finn_repos.keys():
-            print("Invalid source repo! Valid choices are: " + str(finn_repos.keys()))
-            sys.exit()
-
+    def clone():
         if os.path.isdir("finn"):
             return
 
-        subprocess.run(["git", "clone", finn_repos[source]], stdout=subprocess.PIPE)
+        print(f"Cloning into FINN at repository: {finn_default_repo_name}\nOn Branch: {finn_default_branch}\n")
+        if finn_default_commit != "": print(f"At commit: {finn_default_commit}")
+        print("\n\n")
+        subprocess.run(["git", "clone", finn_default_repo], stdout=subprocess.PIPE)
         
 
     def renameIfEki():
@@ -149,30 +150,15 @@ def task_getfinn():
         subprocess.run(["git", "submodule", "init"], cwd="finn", stdout=subprocess.PIPE)
         subprocess.run(["git", "submodule", "update"], cwd="finn", stdout=subprocess.PIPE)
 
-    def checkoutBranch(branch):
-        subprocess.run(["git", "checkout", branch], cwd="finn")
+    def checkoutBranch():
+        subprocess.run(["git", "checkout", finn_default_branch], cwd="finn")
     
     def checkoutCommit():
-        subprocess.run(["git", "checkout", finn_default_commit], cwd="finn", stdout=subprocess.PIPE)
+        if finn_default_commit != "":
+            subprocess.run(["git", "checkout", finn_default_commit], cwd="finn", stdout=subprocess.PIPE)
 
     return {
         "doc": "Clone the specified repository and switch to a given branch. Should only be executed once. Defaults are set in config.toml",
-        "params": [
-            {
-                "name": "branch",
-                "long": "branch",
-                "short": "b",
-                "type": str,
-                "default": finn_default_branch,
-            },
-            {
-                "name": "source",
-                "long": "source",
-                "short": "s",
-                "type": str,
-                "default": finn_default_repo_name,
-            },
-        ],
         "actions": [
             (clone,),
             (renameIfEki,),

@@ -10,6 +10,8 @@ repositories.default = "https://github.com/Xilinx/finn.git"
 repositories.eki = "https://github.com/eki-project/finn-internal.git"
 default_repository = "default"
 default_branch = "main"
+
+# Remove default_commit_hash to check out the latest commit
 default_commit_hash = "04b9c9d" # Commit which merged singularity support
 
 [build.envvars]
