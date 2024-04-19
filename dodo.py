@@ -16,34 +16,52 @@ import hashlib
 
 
 #* Helper functions
-
-
 def execute_in_finn(command_list: list[str]):
     subprocess.run(command_list, cwd="finn")
+
 
 def execute_here(command_list: list[str]):
     subprocess.run(command_list)
 
-def read_from_file(fname: str) -> Optional[str]:
+
+def read_from_file(fname: str, binary: bool = False) -> Optional[str]:
     try:
-        with open(fname, 'r') as f:
+        with open(fname, 'r' if not binary else 'rb') as f:
             return f.read()
     except:
         return None
 
 
-##def check_config_outdated() -> bool:
-#    if not os.path.isfile(".info.json"):
-#        return True
-#    h = hashlib.sha256()
-#    conf = read_from_file("config.toml")
-#    if conf is None:
-#        print("ERROR: No config file found!")
-#        sys.exit()
-#    
-#    old_hash = read_from_file(".info.json")
-#    h.update(conf)
-#    if old_hash != h.hexdigest()
+def get_config_hash() -> str:
+    if not os.path.isfile(".info"):
+        print("Could not get hash, .info file does not exist (yet)")
+        sys.exit()
+    if not os.path.isfile("config.toml"):
+        print("Cannot create hash of non existing configuration!")
+        sys.exit() 
+
+    h = hashlib.sha256()
+    h.update(read_from_file("config.toml", binary=True))
+    return h.hexdigest()
+
+
+def write_config_hash(hash: str):
+    with open(".info", 'w+') as f:
+        f.write(hash)
+
+
+def check_config_outdated() -> bool:
+    if not os.path.isfile(".info"):
+        return True
+    conf = read_from_file("config.toml")
+    if conf is None:
+        print("ERROR: No config file found!")
+        sys.exit()
+    
+    old_hash = read_from_file(".info")
+    new_hash = get_config_hash()
+    return old_hash != new_hash
+
 
 def check_params(params: list[str]):
     if len(params) > 1:
@@ -52,6 +70,8 @@ def check_params(params: list[str]):
     if len(params) == 0:
         print("Please supply the required argument for this function!")
         sys.exit()
+
+
 
 
 #* Import configuration
@@ -99,7 +119,56 @@ if environment == "cluster":
     os.environ["FINN_SINGULARITY"] = config["general"]["singularity_image"]
 
 
-# * SETUP
+#* Function for updating build scripts based on a configuration file
+def instantiate_buildscripts():
+    # Read template file
+    text = ""
+    if not os.path.isfile(finn_build_script_template):
+        print("The template file for the FINN build shell script could not be found!")
+        sys.exit()
+
+    with open(finn_build_script_template, 'r') as f:
+        text = f.read()
+    
+    # Insert variables
+    text = text.replace("<FINN_WORKDIR>", os.environ["FINN_WORKDIR"])
+    vars = ""
+    for envvar_name, envvar_value in config_envvars.items():
+        vars += f"export {envvar_name}=\"{envvar_value}\"\n"
+    text = text.replace("<SET_ENVVARS>", vars)
+
+    # Check for toolchain path
+    if "VIVADO_PATH" not in config_envvars.keys() or ("VIVADO_PATH" in config_envvars.keys() and config_envvars["VIVADO_PATH"] == ""):
+        print("WARNING: VIVADO_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
+    if "VITIS_PATH" not in config_envvars.keys() or ("VITIS_PATH" in config_envvars.keys() and config_envvars["VITIS_PATH"] == ""):
+        print("WARNING: VITIS_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
+    if "HLS_PATH" not in config_envvars.keys() or ("HLS_PATH" in config_envvars.keys() and config_envvars["HLS_PATH"] == ""):
+        print("WARNING: HLS_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
+    if "VIVADO_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["VIVADO_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
+        print("WARNING: The paths or versions of FINN_XILINX_PATH and VIVADO_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
+    if "VITIS_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["VITIS_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
+        print("WARNING: The paths or versions of FINN_XILINX_PATH and VITIS_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
+    if "HLS_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["HLS_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
+        print("WARNING: The paths or versions of FINN_XILINX_PATH and HLS_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
+    # TODO: Make checks for versions as well
+
+    # Write back out
+    with open(finn_build_script, 'w+') as f:
+        f.write(text)
+
+
+#* Update scripts if a change in the config was detected
+if check_config_outdated():
+    print("Detected outdated configuration. Re-instantiating build scripts now.")
+    instantiate_buildscripts()
+    new_hash = get_config_hash()
+    write_config_hash(new_hash)
+
+
+
+# ******** TASKS ******** #
+
+# * Setup
 def task_finn_doit_setup():
     # Only download the driver and its dependencies as well, if the dev mode is active, to save time for normal users
     if dev_mode:
@@ -114,54 +183,18 @@ def task_finn_doit_setup():
     }
 
 
-# * WRITE ENVIRONMENT VARIABLES INTO BUILD SCRIPT AND MAKE A USABLE COPY OF THAT SCRIPT (INSTANTIATED)
+#* Update build scripts manually
 def task_setenvvars():
-    def edit_template():
-        # Read template file
-        text = ""
-        if not os.path.isfile(finn_build_script_template):
-            print("The template file for the FINN build shell script could not be found!")
-            sys.exit()
-
-        with open(finn_build_script_template, 'r') as f:
-            text = f.read()
-        
-        # Insert variables
-        text = text.replace("<FINN_WORKDIR>", os.environ["FINN_WORKDIR"])
-        vars = ""
-        for envvar_name, envvar_value in config_envvars.items():
-            vars += f"export {envvar_name}=\"{envvar_value}\"\n"
-        text = text.replace("<SET_ENVVARS>", vars)
-
-        # Check for toolchain path
-        if "VIVADO_PATH" not in config_envvars.keys() or ("VIVADO_PATH" in config_envvars.keys() and config_envvars["VIVADO_PATH"] == ""):
-            print("WARNING: VIVADO_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
-        if "VITIS_PATH" not in config_envvars.keys() or ("VITIS_PATH" in config_envvars.keys() and config_envvars["VITIS_PATH"] == ""):
-            print("WARNING: VITIS_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
-        if "HLS_PATH" not in config_envvars.keys() or ("HLS_PATH" in config_envvars.keys() and config_envvars["HLS_PATH"] == ""):
-            print("WARNING: HLS_PATH not set and not provided in config.toml. This needs to be set to ensure working toolchains. Either set the path in config.toml or supply it otherwise to the container!") 
-        if "VIVADO_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["VIVADO_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
-            print("WARNING: The paths or versions of FINN_XILINX_PATH and VIVADO_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
-        if "VITIS_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["VITIS_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
-            print("WARNING: The paths or versions of FINN_XILINX_PATH and VITIS_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
-        if "HLS_PATH" in config_envvars.keys() and "FINN_XILINX_PATH" in config_envvars.keys() and not config_envvars["HLS_PATH"].startswith(config_envvars["FINN_XILINX_PATH"]):
-            print("WARNING: The paths or versions of FINN_XILINX_PATH and HLS_PATH don't match. This will cause failure when using the toolchains. Fix this in config.toml!")
-        # TODO: Make checks for versions as well
-
-        # Write back out
-        with open(finn_build_script, 'w+') as f:
-            f.write(text)
-
     return {
         "doc": "Deletes the current build jobscripts and creates new ones, using the environment variables in the configuration. If needed, you can use the variable $WORKING_DIR to refer to the directory the dodo file resides in, or just pass absolute paths.",
         "verbosity": 2,
         "actions": [
-            edit_template
+            instantiate_buildscripts
         ]
     }
 
 
-# * CLONE FINN
+# * Clone FINN
 def task_clonefinn():
     def renameIfEki():
         if os.path.isdir("finn-internal"):
@@ -220,7 +253,7 @@ def create_finn_build_script(name: ProjectName):
             f.write(buildscript.replace("<ONNX_INPUT_NAME>", os.path.join(".", name, name + ".onnx")))
 
 
-# * MAKE FINN PROJECT
+# * Make a new FINN project
 def task_create():
     def create_project(params: list[str]):
         check_params(params)
@@ -240,7 +273,7 @@ def task_create():
     }
 
 
-# * DELETE OLD FINN FILES
+# * Delete log and FINN_TMP files
 def task_cleanup():
     return {
         "doc": "Clean up files created during a FINN run. This includes FINN project files and directories (!!) as well as logs (only in the cluster env).",
@@ -251,7 +284,7 @@ def task_cleanup():
     }
 
 
-# * RUN FINN FLOW ON TARGET PROJECT
+# * Run FINN on a project
 def task_execute():
     def run_synth_for_onnx_name(params: list[str]):
         check_params(params)
@@ -274,7 +307,7 @@ def task_execute():
     }
 
 
-# * RESUME FORM PREVIOUS STEP
+# * Resume FINN Flow from a previous step
 # TODO: Rework this
 def task_resume():
     def run_synth_for_onnx_name_from_step(name):
@@ -299,7 +332,7 @@ def task_resume():
 
 
 # TODO: Only test for now, change that
-# * RUN PYTHON DRIVER IF EXISTING
+# * Run python driver test
 def task_pythondriver():
     def run_python_driver(params: list[str]):
         check_params(params)
