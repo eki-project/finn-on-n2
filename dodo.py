@@ -33,9 +33,6 @@ def read_from_file(fname: str, binary: bool = False) -> Optional[str]:
 
 
 def get_config_hash() -> str:
-    if not os.path.isfile(".info"):
-        print("Could not get hash, .info file does not exist (yet)")
-        sys.exit()
     if not os.path.isfile("config.toml"):
         print("Cannot create hash of non existing configuration!")
         sys.exit() 
@@ -187,9 +184,10 @@ def task_config():
         subprocess.run(shlex.split(f"cp configurations/{fname}.toml ./config.toml"))
 
     yield {
-        "doc": "Pass in the name of a template configuration. For example to use configuration \"cluster\", the file ./configurations/cluster.toml is provided. Caution: This deletes / overwrites your current config. To save it, put it into onfigurations/, so that you can use it at any time in the future.",
+        "doc": "Pass in the name of a template configuration. For example to use configuration \"cluster\", the file ./configurations/cluster.toml is provided. Caution: This deletes / overwrites your current config. To save it, put it into onfigurations/, so that you can use it at any time in the future. Also updated buildscripts",
         "actions": [
-           use_config_template 
+           use_config_template,
+           instantiate_buildscripts
         ],
         "pos_arg": "names"
     }
