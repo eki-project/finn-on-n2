@@ -170,7 +170,7 @@ def task_update():
     def update():
         subprocess.run("git stash push -q;git pull;git stash pop -q", shell=True)
     return {
-        "doc": "Updates finn-on-n2. Local changes (for example to configurations) are preserved by stashing",
+        "doc": " | Updates finn-on-n2. Local changes (for example to configurations) are preserved",
         "actions": [
             update
         ]
@@ -196,7 +196,7 @@ def task_config():
         subprocess.run(shlex.split(f"cp configurations/{fname}.toml ./config.toml"))
 
     return {
-        "doc": "Pass in the name of a template configuration. For example to use configuration \"cluster\", the file ./configurations/cluster.toml is provided. Caution: This deletes / overwrites your current config. To save it, put it into onfigurations/, so that you can use it at any time in the future. Also updated buildscripts",
+        "doc": " | Usage: doit config <configname>. Sets the current config to configurations/<configname>.toml",
         "actions": [
            use_config_template,
            instantiate_buildscripts
@@ -214,7 +214,7 @@ def task_finn_doit_setup():
     
     yield {
         "basename": "finn-doit-setup",
-        "doc": "Retrieve FINN and create build shell scripts. If you update the env vars in config.toml it suffices to call \"setenvvars\" again to create new build scritps",
+        "doc": "| Setup. Clones FINN and instantitates script templates",
         "task_dep": ["clonefinn", "setenvvars"],
         "actions": []
     }
@@ -223,7 +223,7 @@ def task_finn_doit_setup():
 #* Update build scripts manually
 def task_setenvvars():
     return {
-        "doc": "Deletes the current build jobscripts and creates new ones, using the environment variables in the configuration. If needed, you can use the variable $WORKING_DIR to refer to the directory the dodo file resides in, or just pass absolute paths.",
+        "doc": "| Update the build scripts according to your config",
         "verbosity": 2,
         "actions": [
             instantiate_buildscripts
@@ -242,7 +242,7 @@ def task_clonefinn():
             execute_in_finn(shlex.split(f"git checkout {finn_default_commit}")) 
 
     return {
-        "doc": "Clone the specified repository and switch to a given branch. Should only be executed once. Defaults are set in config.toml",
+        "doc": "| Clone into the config-given repo, branch and optionally commit ",
         "actions": [
             (execute_here, [shlex.split(f"git clone {finn_default_repo}")]),
             renameIfEki,
@@ -301,7 +301,7 @@ def task_create():
         create_finn_build_script(project_name)
 
     return {
-        "doc": "Create a finn project folder. Only executes the different steps if required",
+        "doc": "| Creates a project based on the given file, automatically using the filename as the project name",
         "actions": [
             create_project
         ],
@@ -313,10 +313,29 @@ def task_create():
 # * Delete log and FINN_TMP files
 def task_cleanup():
     return {
-        "doc": "Clean up files created during a FINN run. This includes FINN project files and directories (!!) as well as logs (only in the cluster env).",
+        "doc": "| Delete log files and FINN_TMP files. Be absolutely sure you know what you are doing",
         "actions": [
             CmdAction(["rm", "*.out"]),
             CmdAction(["rm", "-r", "FINN_TMP/*"])
+        ]
+    }
+
+
+#* List all projects
+def task_projects():
+    def ls_projects():
+        exclusion_list = [".mypy_cache", "build_scripts", "configurations", "pre-builds", "run_scripts"]
+        plist = ""
+        for name in os.listdir("."):
+            if (os.isdir(name)) and (name not in exclusion_list) and ("build.py" in os.listdir(name)):
+                plist += f"\t{name}\n"
+        print(f"Found {len(plist)} project folders:")
+        print(plist)
+    
+    return {
+        "doc": "| List all projects in this directory",
+        "actions": [
+            ls_projects
         ]
     }
 
@@ -335,7 +354,7 @@ def task_execute():
         subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(name)])
 
     return {
-        "doc": "Execute a finn compilation and synthesis based on a project name. Requires the project directory to exist first already.",
+        "doc": "| Execute the given project",
         "pos_arg": "params",
         "actions": [
             run_synth_for_onnx_name
@@ -359,7 +378,7 @@ def task_resume():
         subprocess.run([job_exec_prefix, finn_build_script, os.path.abspath(pdir)])
 
     return {
-        "doc": "Execute a finn compilation and synthesis based on a project name. Requires the project directory to exist first already. (doit resume <project-name> <step-name>)",
+        "doc": "| Resume a FINN flow. Usage: doit resume <project-name> <step-name>. Step has to have been reached before",
         "pos_arg": "name",
         "actions": [
             (run_synth_for_onnx_name_from_step,),
@@ -384,7 +403,7 @@ def task_pythondriver():
         subprocess.run([job_exec_prefix, pythondriver_run_script, driver_dir])
 
     return {
-        "doc": "Execute the python driver of a project, print the results on screen",
+        "doc": "| Execute the python driver with testdata",
         "pos_arg": "params",
         "actions": [(run_python_driver,)],
         "verbosity": 2,
