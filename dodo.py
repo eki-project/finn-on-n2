@@ -339,8 +339,8 @@ def task_cleanup():
     return {
         "doc": "| Delete log files and FINN_TMP files. Be absolutely sure you know what you are doing",
         "actions": [
-            CmdAction(["rm", "*.out"]),
-            CmdAction(["rm", "-r", "FINN_TMP/*"])
+            "rm *.out",
+            "rm -r FINN_TMP"
         ]
     }
 
@@ -417,6 +417,30 @@ def task_resume():
             (run_synth_for_onnx_name_from_step,),
         ],
         "verbosity": 2,
+    }
+
+
+def task_edit():
+    def edit(names):
+        if len(names) != 1:
+            print("Cannot edit multiple or none projects. Provide a single project name!")
+            sys.exit()
+
+        editors = ["vim", "vi", "nano", "gedit", "code"]
+        for editor in editors:
+            if shutil.which(editor) is not None: 
+                subprocess.run(shlex.split(f"vim {names[0]}/build.py"))
+                return True
+        
+        print(f"None of these editors is available for editing: {editors}!")
+        return False
+    
+    return {
+        "doc": "| Open the build.py file of the given project in an available editor",
+        "actions": [
+            edit
+        ],
+        "pos_arg": "names"
     }
 
 
