@@ -165,6 +165,18 @@ if check_config_outdated():
 
 # ******** TASKS ******** #
 
+#* Update finn-on-n2
+def task_update():
+    def update():
+        subprocess.run("git stash;git pull;git stash pop", shell=True)
+    return {
+        "doc": "Updates finn-on-n2. Local changes (for example to configurations) are preserved by stashing",
+        "actions": [
+            update
+        ]
+    }
+
+
 #* Switch to a template configuration
 def task_config():
     def use_config_template(names: list[str]):
