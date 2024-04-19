@@ -1,0 +1,51 @@
+[general]
+used_environment = "normal"
+singularity_image = ""
+dev_mode = false
+
+
+[finn]
+build_template = "build_template.py"
+repositories.default = "https://github.com/Xilinx/finn.git"
+repositories.eki = "https://github.com/eki-project/finn-internal.git"
+default_repository = "default"
+default_branch = "main"
+
+# Remove default_commit_hash to check out the latest commit
+default_commit_hash = "04b9c9d" # Commit which merged singularity support
+
+[build.envvars]
+# You can use $WORKING_DIR, which normally points to this directory, but can be changed in the build scripts template before the part where these variables are instanced
+SINGULARITY_CACHEDIR="$WORKING_DIR/SINGULARITY_CACHE"
+SINGULARITY_TMPDIR="$WORKING_DIR/SINGULARITY_TMP"
+FINN_HOST_BUILD_DIR="$WORKING_DIR/FINN_TMP"
+FINN_XILINX_PATH="/tools/Xilinx" # Cluster path
+FINN_XILINX_VERSION=2023.1
+VIVADO_PATH="/tools/Xilinx/Vivado"
+VITIS_PATH="/tools/Xilinx/Vitis"
+HLS_PATH="/tools/Xilinx/Vitis_HLS"
+FINN_DOCKER_PREBUILT=0 # Set this to 0 normally. Required for cluster but not normally, is even being deprecated
+FINN_DOCKER_GPU=0
+LC_ALL="C"
+PYTHONUNBUFFERED=1
+NUM_DEFAULT_WORKERS=28
+
+
+[environment.cluster]
+type = "cluster"
+driver_compiler_prefix_commands = "ml fpga;ml xilinx/xrt/2.14;ml devel/Doxygen/1.9.5-GCCcore-12.2.0;ml compiler/GCC/12.2.0;ml devel/CMake/3.24.3-GCCcore-12.2.0;"
+job_execution = "sbatch"
+finn_build_script = "build_scripts/finn_build_cluster.sh"
+finn_build_script_template = "build_scripts/finn_build_cluster_template.sh"
+cppdriver_run_script = "run_scripts/run_cpp_driver.sh"
+pythondriver_run_script = "run_scripts/run_python_driver.sh"
+
+
+[environment.normal]
+type = "normal"
+driver_compiler_prefix_commands = ""
+job_execution = "bash"
+finn_build_script = "build_scripts/finn_build_local.sh"
+finn_build_script_template = "build_scripts/finn_build_local_template.sh"
+cppdriver_run_script = ""
+pythondriver_run_script = ""
