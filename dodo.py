@@ -168,6 +168,33 @@ if check_config_outdated():
 
 # ******** TASKS ******** #
 
+#* Switch to a template configuration
+def task_config():
+    def use_config_template(names: list[str]):
+        if len(names) > 1:
+            print("More than one configuration name provided. Please only pass a single configuration name")
+            sys.exit()
+        if len(names) == 0:
+            print("Please pass a configuration name (names are the toml filenames in configurations/ without the suffix)")
+            sys.exit()
+        
+        fname = names[0]
+        available_configs = [fn.replace(".toml", "") for fn in os.listdir("configurations")]
+        if fname not in available_configs:
+            print("Could not find configuration under configurations/" + fname + ".toml")
+            sys.exit()
+        
+        subprocess.run(shlex.split(f"cp configurations/{fname}.toml ./config.toml"))
+
+    yield {
+        "doc": "Pass in the name of a template configuration. For example to use configuration \"cluster\", the file ./configurations/cluster.toml is provided. Caution: This deletes / overwrites your current config. To save it, put it into onfigurations/, so that you can use it at any time in the future.",
+        "actions": [
+           use_config_template 
+        ],
+        "pos_arg": "names"
+    }
+
+
 # * Setup
 def task_finn_doit_setup():
     # Only download the driver and its dependencies as well, if the dev mode is active, to save time for normal users
