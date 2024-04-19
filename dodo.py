@@ -183,7 +183,7 @@ def task_config():
         
         subprocess.run(shlex.split(f"cp configurations/{fname}.toml ./config.toml"))
 
-    yield {
+    return {
         "doc": "Pass in the name of a template configuration. For example to use configuration \"cluster\", the file ./configurations/cluster.toml is provided. Caution: This deletes / overwrites your current config. To save it, put it into onfigurations/, so that you can use it at any time in the future. Also updated buildscripts",
         "actions": [
            use_config_template,
@@ -275,7 +275,7 @@ def create_finn_build_script(name: ProjectName):
             print(f"Couldn't find build script template at {finn_build_template}. Please correct your config.toml!")
             sys.exit()
         with open(build_path, 'w+') as f:
-            f.write(buildscript.replace("<ONNX_INPUT_NAME>", os.path.join(".", name, name + ".onnx")))
+            f.write(buildscript.replace("<ONNX_INPUT_NAME>", name + ".onnx"))
 
 
 # * Make a new FINN project
