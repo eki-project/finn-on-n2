@@ -168,7 +168,7 @@ if check_config_outdated():
 #* Update finn-on-n2
 def task_update():
     def update():
-        subprocess.run("git stash;git pull;git stash pop", shell=True)
+        subprocess.run("git stash push -q;git pull;git stash pop -q", shell=True)
     return {
         "doc": "Updates finn-on-n2. Local changes (for example to configurations) are preserved by stashing",
         "actions": [
