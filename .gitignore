@@ -2,3 +2,4 @@
 .pyc
 __pycache__/dodo.cpython-310.pyc
 cybsec-mlp-ready.onnx
+.info

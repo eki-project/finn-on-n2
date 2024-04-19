@@ -9,11 +9,31 @@ import sys
 import os
 import shutil
 from typing import Any, Generator, Optional
+from doit.exceptions import BaseFail
 import toml
 from doit.action import CmdAction
+from doit.reporter import ConsoleReporter
+from doit.task import Task
 import shlex
 import hashlib
 
+class CustomReporter(ConsoleReporter):
+    def __init__(self, outstream, options):
+        super().__init__(outstream, options)
+    
+    def execute_task(self, task: Task):
+        if task.actions and (task.name[0] != '_'):
+            if task.name != "finn-doit-setup":
+                self.write(f"[ running: {task.name} ]\n")
+            else:
+                self.write(f"[ finn-on-n2 setup ]\nCloning FINN and setting up scripts now.\nFor further information consult the README.\n\n")
+
+    def add_success(self, task):
+        self.write(f"[ success: {task.name} ]\n")
+    
+    def add_failure(self, task, fail: BaseFail):
+        self.write(f"[ failure in task {task.name}: {fail.get_name()} ]\n")
+        
 
 #* Helper functions
 def execute_in_finn(command_list: list[str]):
@@ -81,7 +101,11 @@ if config is None:
 
 
 #* DOIT Configuration
-DOIT_CONFIG = {"action_string_formatting": "new", "default_tasks": ["finn-doit-setup"]}
+DOIT_CONFIG = {
+    "action_string_formatting": "new", 
+    "default_tasks": ["finn-doit-setup"],
+    "reporter": CustomReporter
+}
 
 
 #* TASK Configuration
@@ -325,24 +349,30 @@ def task_cleanup():
 def task_projects():
     def ls_projects():
         exclusion_list = [".mypy_cache", "build_scripts", "configurations", "pre-builds", "run_scripts"]
-        plist = ""
+        dirs = []
         for name in os.listdir("."):
-            if (os.isdir(name)) and (name not in exclusion_list) and ("build.py" in os.listdir(name)):
-                plist += f"\t{name}\n"
-        print(f"Found {len(plist)} project folders:")
+            if (os.path.isdir(name)) and (name not in exclusion_list) and ("build.py" in os.listdir(name)):
+                dirs.append(name)
+        
+        plist = "\n".join([f"\t{n}" for n in dirs])
+        print(f"Found {len(dirs)} project folders:")
         print(plist)
     
     return {
         "doc": "| List all projects in this directory",
         "actions": [
             ls_projects
-        ]
+        ],
+        "verbosity": 2
     }
 
 
 # * Run FINN on a project
 def task_execute():
     def run_synth_for_onnx_name(params: list[str]):
+        if "finn" not in os.listdir("."):
+            print("Error: Missing finn directory. Run \"doit\" first to set everything up!")
+            sys.exit()
         check_params(params)
         name: ONNXFilePath = params[0]
         if not os.path.isdir(name):
@@ -367,6 +397,9 @@ def task_execute():
 # TODO: Rework this
 def task_resume():
     def run_synth_for_onnx_name_from_step(name):
+        if "finn" not in os.listdir("."):
+            print("Error: Missing finn directory. Run \"doit\" first to set everything up!")
+            sys.exit()
         pdir = os.path.join(".", name[0])
         step = name[1]
         if not os.path.isdir(pdir):
