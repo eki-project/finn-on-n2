@@ -9,6 +9,17 @@ This git repository is supposed to help making the setup of FINN easier by autom
 * You need to have Vitis / Vivado activated in your environment
 * Note that _currently_ the default configuration points to a commit before v0.10 was released for stability reasons. You can still use it for v0.10 of course, but expect that you will have to update some details
 
+## TL;DR
+```
+git clone git@github.com:eki-project/finn-on-n2.git   # Clone this repository
+cd finn-on-n2                                         # Jump into repo
+doit config local                                     # Load a config (can also be skipped)
+vim config.toml                                       # Edit the configuration to fit your needs
+doit create ~/models/my_model.onnx                    # Create a project based on a given onnx file (gets copied)
+doit edit my_model                                    # Optional: Edit the build script of that project
+doit execute my_model                                 # Start the FINN flow
+```
+
 ## Installation
 * Clone this repository
 * Look into the .toml configuration file. Set the values you need and save. Important lines are:
@@ -34,6 +45,9 @@ To run the FINN flow simply run
 doit execute mynet
 ```
 
+
+
+### Soon to be supported
 If you later on want to restart the flow but only want to execute for example everything after ```step_hls_codegen``` again, simply use
 
 ```
