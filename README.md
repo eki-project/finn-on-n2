@@ -5,6 +5,7 @@ This git repository is supposed to help making the setup of FINN easier by autom
 
 # Usage
 * __If you want to run this on a cluster and thus have to use singularity this requires the updated run-docker.sh script with Singularity support: https://github.com/Xilinx/finn/pull/868__
+  * If you start a job on a cluster and expect it to use singularity, and you get the message "docker" not found, that is likely because the singularity support was not patched in!
 * Remember to specify your own project in the sbatch parameters for cluster usage
 * You need to have Vitis / Vivado activated in your environment
 * Note that _currently_ the default configuration points to a commit before v0.10 was released for stability reasons. You can still use it for v0.10 of course, but expect that you will have to update some details

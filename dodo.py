@@ -140,6 +140,19 @@ if environment == "cluster":
     os.environ["FINN_SINGULARITY"] = config["general"]["singularity_image"]
 
 
+def check_singularity():
+    """Return whether singularity is mentioned in the run_docker script"""
+    if not os.path.isfile(os.path.join("finn", "run-docker.sh")):
+        print("Setup not configured correctly. finn is either not installed or finn/run-docker.sh is specifically missing! Run doit once to clone FINN.")
+        sys.exit()
+    with open(os.path.join("finn", "run-docker.sh"), 'r') as f:
+        text = f.read()
+        return ("singularity" in text) or ("SINGULARITY" in text)
+
+
+if (environment == "cluster" or ("FINN_SINGULARITY" in os.environ.keys() and os.environ["FINN_SINGULARITY"] != "")) and not check_singularity():
+    print("WARNING: You have selected the cluster environment but your run-docker.sh file does not mention singularity. If the job failes with \"docker: Command not found\" remember to patch the singularity PR into FINN before executing!")
+
 #* Function for updating build scripts based on a configuration file
 def instantiate_buildscripts():
     # Read template file
