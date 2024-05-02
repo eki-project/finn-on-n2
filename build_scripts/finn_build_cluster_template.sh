@@ -51,4 +51,7 @@ cd $WORKING_DIR/finn
 if [ -d "/dev/shm" ]; then
     echo "Copying files back"
     cp -r $WORKING_DIR <FINN_WORKDIR>
+
+    # Copy back files into FINN_TMP as well, because they could be required for the next run
+    cp -r <FINN_WORKDIR>/temporary_finn_dir/FINN_TMP/* <FINN_WORKDIR>/FINN_TMP
 fi
