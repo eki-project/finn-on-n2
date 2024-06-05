@@ -144,7 +144,8 @@ def check_singularity():
     """Return whether singularity is mentioned in the run_docker script"""
     if not os.path.isfile(os.path.join("finn", "run-docker.sh")):
         print("Setup not configured correctly. finn is either not installed or finn/run-docker.sh is specifically missing! Run doit once to clone FINN.")
-        sys.exit()
+        #sys.exit()
+        return True # TODO: Fix more permanently
     with open(os.path.join("finn", "run-docker.sh"), 'r') as f:
         text = f.read()
         return ("singularity" in text) or ("SINGULARITY" in text)
