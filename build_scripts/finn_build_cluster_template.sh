@@ -20,6 +20,7 @@ WORKING_DIR=<FINN_WORKDIR>
 # For FINN
 module reset
 module load system singularity
+ml lib/gurobi/1102
 
 ml fpga
 ml xilinx/xrt/2.14
