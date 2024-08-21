@@ -14,6 +14,9 @@ This git repository is supposed to help making the setup of FINN easier by autom
 ```
 git clone git@github.com:eki-project/finn-on-n2.git   # Clone this repository
 cd finn-on-n2                                         # Jump into repo
+conda env create -f environment.yml                   # Create a conda environment
+conda activate finn-on-n2                             # Activate the conda environment
+doit init                                             # Setup. Clones FINN and instantitates script templates.
 doit config local                                     # Load a config (can also be skipped)
 vim config.toml                                       # Edit the configuration to fit your needs
 doit create ~/models/my_model.onnx                    # Create a project based on a given onnx file (gets copied)

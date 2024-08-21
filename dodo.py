@@ -23,7 +23,7 @@ class CustomReporter(ConsoleReporter):
     
     def execute_task(self, task: Task):
         if task.actions and (task.name[0] != '_'):
-            if task.name != "finn-doit-setup":
+            if task.name != "init":
                 self.write(f"[ running: {task.name} ]\n")
             else:
                 self.write(f"[ finn-on-n2 setup ]\nCloning FINN and setting up scripts now.\nFor further information consult the README.\n\n")
@@ -103,7 +103,7 @@ if config is None:
 #* DOIT Configuration
 DOIT_CONFIG = {
     "action_string_formatting": "new", 
-    "default_tasks": ["finn-doit-setup"],
+    "default_tasks": ["init"],
     "reporter": CustomReporter
 }
 
@@ -244,16 +244,17 @@ def task_config():
 
 
 # * Setup
-def task_finn_doit_setup():
+def task_init():
     # Only download the driver and its dependencies as well, if the dev mode is active, to save time for normal users
     if dev_mode:
         print("Currently, building the C++ driver in dev mode is unsupported. Please set dev mode to false in the config.toml file!\nExiting.")
         sys.exit()
-    
-    yield {
-        "basename": "finn-doit-setup",
-        "doc": "| Setup. Clones FINN and instantitates script templates",
+
+    return {
+        "basename": "init",
+        "doc": "| Setup. Clones FINN and instantitates script templates.",
         "task_dep": ["clonefinn", "setenvvars"],
+        "pos_arg": "params",
         "actions": []
     }
 
@@ -436,21 +437,29 @@ def task_resume():
 
 def task_edit():
     def edit(names):
-        if len(names) != 1:
-            print("Cannot edit multiple or none projects. Provide a single project name!")
+        if len(names) > 2:
+            print("Cannot edit multiple or none projects. Provide a single project name and/or an editor!")
             sys.exit()
 
         editors = ["vim", "vi", "nano", "gedit", "code"]
+
+        if (len(names) > 1):
+            if shutil.which(names[1]) is None:
+                print(f"{names[1]} is not available. Chosing another editor")
+            else:
+                subprocess.run(shlex.split(f"{names[1]} {names[0]}/build.py"))
+                return True
+        
         for editor in editors:
             if shutil.which(editor) is not None: 
-                subprocess.run(shlex.split(f"vim {names[0]}/build.py"))
+                subprocess.run(shlex.split(f"{editor} {names[0]}/build.py"))
                 return True
         
         print(f"None of these editors is available for editing: {editors}!")
         return False
     
     return {
-        "doc": "| Open the build.py file of the given project in an available editor",
+        "doc": "| Open the build.py file of the given project in an available editor. Usage: doit edit <project_dir> <editor>",
         "actions": [
             edit
         ],
