@@ -17,6 +17,9 @@ echo "Running the cluster/remote build script"
 
 WORKING_DIR=<FINN_WORKDIR>
 
+model_dir=$1
+model_dir=${model_dir##*"$WORKING_DIR"}
+
 # For FINN
 module reset
 module load system singularity
@@ -51,8 +54,10 @@ cd $WORKING_DIR/finn
 
 if [ -d "/dev/shm" ]; then
     echo "Copying files back"
-    cp -r $WORKING_DIR <FINN_WORKDIR>
+    # Copy back FINN_TMP files
+    cp -r $WORKING_DIR/FINN_TMP <FINN_WORKDIR>/FINN_TMP
 
-    # Copy back files into FINN_TMP as well, because they could be required for the next run
-    cp -r <FINN_WORKDIR>/temporary_finn_dir/FINN_TMP/* <FINN_WORKDIR>/FINN_TMP
+    # Copy back model files
+    cp -r "$WORKING_DIR""$model_dir" <FINN_WORKDIR>"$model_dir"
+
 fi

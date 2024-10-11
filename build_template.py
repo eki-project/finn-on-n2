@@ -16,13 +16,15 @@ DEFAULT_STEPS:      Final[list[str | Callable]] = [
     "step_qonnx_to_finn",
     "step_tidy_up",
     "step_streamline",
-    "step_convert_to_hls",
+    "step_convert_to_hw",
+    "step_specialize_layers",
     "step_create_dataflow_partition",
     "step_target_fps_parallelization",
     "step_apply_folding_config",
+    "step_minimize_bit_width",
     "step_generate_estimate_reports",
-    "step_hls_codegen",
-    "step_hls_ipgen",
+    "step_hw_codegen",
+    "step_hw_ipgen",
     "step_set_fifo_depths",
     "step_create_stitched_ip",
     "step_measure_rtlsim_performance",
@@ -79,19 +81,21 @@ else:
 
 
 cfg_stitched_ip = build.DataflowBuildConfig(
-    output_dir              = DEFAULT_OUT_DIR,
-    steps                   = actual_steps,
-    vitis_platform          = DEFAULT_PLATFORM,
-    board                   = DEFAULT_BOARD,
-    mvau_wwidth_max         = DEFAULT_MVAU_MAX_WIDTH,
-    target_fps              = DEFAULT_TARGET_FPS,
-    synth_clk_period_ns     = DEFAULT_SYNTH_CLK_NS,
-    force_rtl_conv_inp_gen  = True,
-    auto_fifo_depths        = DEFAULT_AUTO_FIFO_DEPTH,
-    rtlsim_use_vivado_comps = False,
-    split_large_fifos       = True,
-    shell_flow_type         = DEFAULT_SHELL_FLOW,
-    generate_outputs        = DEFAULT_OUTPUT_GENS
+    output_dir=DEFAULT_OUT_DIR,
+    steps=actual_steps,
+    vitis_platform=DEFAULT_PLATFORM,
+    board=DEFAULT_BOARD,
+    mvau_wwidth_max=DEFAULT_MVAU_MAX_WIDTH,
+    target_fps=DEFAULT_TARGET_FPS,
+    synth_clk_period_ns=DEFAULT_SYNTH_CLK_NS,
+    minimize_bit_width=True,
+    auto_fifo_depths=DEFAULT_AUTO_FIFO_DEPTH,
+    rtlsim_use_vivado_comps=False,
+    split_large_fifos=True,
+    shell_flow_type=DEFAULT_SHELL_FLOW,
+    generate_outputs=DEFAULT_OUTPUT_GENS,
+    standalone_thresholds=True,
+    vitis_opt_strategy=build_cfg.VitisOptStrategyCfg.PERFORMANCE_BEST
     )
 
 build.build_dataflow_cfg(model_file, cfg_stitched_ip)
